@@ -34,6 +34,8 @@ INSERT INTO itemTypes VALUES (33,'conferencePaper',NULL,1);
 INSERT INTO itemTypes VALUES (34,'document',NULL,2);
 INSERT INTO itemTypes VALUES (35,'encyclopediaArticle',NULL,1);
 INSERT INTO itemTypes VALUES (36,'dictionaryEntry',NULL,1);
+INSERT INTO itemTypes VALUES (37,'annotation',NULL,1,)
+INSERT INTO itemTypes VALUES (38,'preprint',NULL,1),
 
 INSERT INTO fields VALUES (1,'url',NULL);
 INSERT INTO fields VALUES (2,'rights',NULL);
