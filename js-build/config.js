@@ -65,6 +65,7 @@ const symlinkFiles = [
 	'resource/vs/language/json/*.js',
 	'version',
 	'install.rdf',
+	'update.rdf'
 ];
 
 
