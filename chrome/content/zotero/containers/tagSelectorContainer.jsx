@@ -106,7 +106,12 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 			loaded: true
 		};
 		if (prevLibraryID != libraryID) {
-			newState.tagColors = Zotero.Tags.getColors(libraryID);
+			if (libraryID) {
+				newState.tagColors = Zotero.Tags.getColors(libraryID);
+			}
+			else {
+				newState.tagColors = new Map();
+			}
 		}
 		var { tags, scope } = await this.getTagsAndScope();
 		newState.tags = tags;
@@ -344,7 +349,7 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 	}
 	
 	getFontInfo() {
-		var elem = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+		var elem = document.createElement("div");
 		elem.className = 'tag-selector-item';
 		elem.style.position = 'absolute';
 		elem.style.opacity = 0;
@@ -380,7 +385,7 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 	 */
 	getTextWidth(text, font) {
 		// re-use canvas object for better performance
-		var canvas = this.canvas || (this.canvas = document.createElementNS("http://www.w3.org/1999/xhtml", "canvas"));
+		var canvas = this.canvas || (this.canvas = document.createElement("canvas"));
 		var context = canvas.getContext("2d");
 		context.font = font;
 		// Add a little more to make sure we don't crop
@@ -507,7 +512,12 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 			tagContextMenu.childNodes[i].disabled = this.state.viewOnly;
 		}
 		ev.preventDefault();
-		tagContextMenu.openPopup(null, null, ev.clientX+2, ev.clientY+2);
+		
+		tagContextMenu.openPopupAtScreen(
+			ev.screenX + 1,
+			ev.screenY + 1,
+			true
+		);
 		this.contextTag = tag;
 	}
 
@@ -575,7 +585,7 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 			// Remove tags on Cmd-drag/Shift-drag
 			var remove = (Zotero.isMac && event.metaKey) || (!Zotero.isMac && event.shiftKey);
 			
-			return Zotero.DB.executeTransaction(function* () {
+			return Zotero.DB.executeTransaction(async function () {
 				ids = ids.split(',');
 				var items = Zotero.Items.get(ids);
 				var value = elem.textContent;
@@ -588,7 +598,7 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 					else {
 						item.addTag(value);
 					}
-					yield item.save();
+					await item.save();
 				}
 			}.bind(this));
 		}
@@ -619,7 +629,7 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 		io.tagColors = tagColors;
 		
 		window.openDialog(
-			'chrome://zotero/content/tagColorChooser.xul',
+			'chrome://zotero/content/tagColorChooser.xhtml',
 			'zotero-tagSelector-colorChooser',
 			'chrome,modal,centerscreen', io
 		);
@@ -630,6 +640,46 @@ Zotero.TagSelector = class TagSelectorContainer extends React.PureComponent {
 		}
 		
 		await Zotero.Tags.setColor(this.libraryID, io.name, io.color, io.position);
+	}
+
+	async openTagSplitterWindow() {
+		const oldTagName = this.contextTag.name; // contextTag contains { name, width, color }
+		const dataIn = {
+			oldTag: this.contextTag.name,
+			isLongTag: false
+		};
+		const dataOut = { result: null };
+		
+		window.openDialog(
+			'chrome://zotero/content/longTagFixer.xhtml',
+			'',
+			'chrome,modal,centerscreen',
+			dataIn, dataOut
+		);
+
+		if (!dataOut.result) {
+			return;
+		}
+
+		const oldTagID = Zotero.Tags.getID(oldTagName);
+
+		if (dataOut.result.op === 'split') {
+			const itemIDs = await Zotero.Tags.getTagItems(this.libraryID, oldTagID);
+			await Zotero.DB.executeTransaction(async () => {
+				for (const itemID of itemIDs) {
+					const item = await Zotero.Items.getAsync(itemID);
+					const tagType = item.getTagType(oldTagName);
+					for (const newTagName of dataOut.result.tags) {
+						item.addTag(newTagName, tagType);
+					}
+					item.removeTag(oldTagName);
+					await item.save();
+				}
+				await Zotero.Tags.purge(oldTagID);
+			});
+		} else {
+			throw new Error('Unsupported op: ' + dataOut.result.op);
+		}
 	}
 
 	async openRenamePrompt() {

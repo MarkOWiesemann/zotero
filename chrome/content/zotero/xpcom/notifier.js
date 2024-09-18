@@ -33,7 +33,8 @@ Zotero.Notifier = new function () {
 	var _types = [
 		'collection', 'search', 'share', 'share-items', 'item', 'file',
 		'collection-item', 'item-tag', 'tag', 'setting', 'group', 'trash',
-		'bucket', 'relation', 'feed', 'feedItem', 'sync', 'api-key', 'tab'
+		'bucket', 'relation', 'feed', 'feedItem', 'sync', 'api-key', 'tab',
+		'itemtree'
 	];
 	var _transactionID = false;
 	var _queue = {};
@@ -76,6 +77,7 @@ Zotero.Notifier = new function () {
 		if (priority) {
 			msg += " with priority " + priority;
 		}
+		Zotero.debug(msg, 4);
 		_observers[hash] = {
 			ref: ref,
 			types: types,

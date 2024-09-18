@@ -301,9 +301,9 @@ Zotero.Sync.Storage.Local = {
 		}
 		// Update sync states in bulk
 		if (changed) {
-			yield Zotero.DB.executeTransaction(function* () {
+			yield Zotero.DB.executeTransaction(async function () {
 				for (let state in statesToSet) {
-					yield this.updateSyncStates(statesToSet[state], parseInt(state));
+					await this.updateSyncStates(statesToSet[state], parseInt(state));
 				}
 			}.bind(this));
 		}
@@ -793,7 +793,14 @@ Zotero.Sync.Storage.Local = {
 		}
 		catch (e) {
 			Zotero.debug(zipFile.leafName + " is not a valid ZIP file", 2);
-			zipReader.close();
+			try {
+				zipReader.close();
+			}
+			catch (e) {
+				Zotero.debug(e, 2);
+			}
+			zipReader = null
+			Cu.forceGC();
 			
 			try {
 				zipFile.remove(false);
@@ -813,6 +820,8 @@ Zotero.Sync.Storage.Local = {
 		}
 		catch (e) {
 			zipReader.close();
+			zipReader = null
+			Cu.forceGC();
 			throw e;
 		}
 		
@@ -900,6 +909,8 @@ Zotero.Sync.Storage.Local = {
 				Zotero.logError(e);
 				
 				zipReader.close();
+				zipReader = null
+				Cu.forceGC();
 				
 				Zotero.File.checkFileAccessError(e, destPath, 'create');
 			}
@@ -914,6 +925,9 @@ Zotero.Sync.Storage.Local = {
 					}
 					catch (e) {}
 					zipReader.close();
+					zipReader = null
+					Cu.forceGC();
+					
 					// TODO: localize
 					var msg = "Due to a Windows path length limitation, your Zotero data directory "
 						+ "is too deep in the filesystem for syncing to work reliably. "
@@ -950,6 +964,8 @@ Zotero.Sync.Storage.Local = {
 				}
 				
 				zipReader.close();
+				zipReader = null
+				Cu.forceGC();
 				
 				Zotero.File.checkFileAccessError(e, destPath, 'create');
 			}
@@ -962,7 +978,30 @@ Zotero.Sync.Storage.Local = {
 			}
 		}
 		zipReader.close();
-		zipFile.remove(false);
+		zipReader = null
+		Cu.forceGC();
+		
+		// TEMP: Allow deleting to fail on Windows
+		if (Zotero.isWin) {
+			try {
+				zipFile.remove(false);
+			}
+			catch (e) {
+				Zotero.logError(e);
+				// Try again in 30 seconds
+				setTimeout(() => {
+					try {
+						zipFile.remove(false);
+					}
+					catch (e) {
+						Zotero.logError(e);
+					}
+				}, 30000);
+			}
+		}
+		else {
+			zipFile.remove(false);
+		}
 		
 		return returnFile;
 	}),
@@ -1043,16 +1082,15 @@ Zotero.Sync.Storage.Local = {
 			}
 		};
 		
-		var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-				   .getService(Components.interfaces.nsIWindowMediator);
+		var wm = Services.wm;
 		var lastWin = wm.getMostRecentWindow("navigator:browser");
-		lastWin.openDialog('chrome://zotero/content/merge.xul', '', 'chrome,modal,centerscreen', io);
+		lastWin.openDialog('chrome://zotero/content/merge.xhtml', '', 'chrome,modal,centerscreen', io);
 		
 		if (!io.dataOut) {
 			return false;
 		}
 		
-		yield Zotero.DB.executeTransaction(function* () {
+		yield Zotero.DB.executeTransaction(async function () {
 			for (let i = 0; i < conflicts.length; i++) {
 				let conflict = conflicts[i];
 				// TEMP
@@ -1080,7 +1118,7 @@ Zotero.Sync.Storage.Local = {
 					syncState = this.SYNC_STATE_FORCE_DOWNLOAD;
 				}
 				item.attachmentSyncState = syncState;
-				yield item.save({ skipAll: true });
+				await item.save({ skipAll: true });
 			}
 		}.bind(this));
 		return true;

@@ -19,7 +19,7 @@ describe("ZoteroPane", function() {
 		it("should create an item and focus the title field", function* () {
 			yield zp.newItem(Zotero.ItemTypes.getID('book'), {}, null, true);
 			var itemBox = doc.getElementById('zotero-editpane-item-box');
-			var textboxes = doc.getAnonymousNodes(itemBox)[0].getElementsByTagName('textbox');
+			var textboxes = itemBox.querySelectorAll('input, textarea');
 			assert.lengthOf(textboxes, 1);
 			assert.equal(textboxes[0].getAttribute('fieldname'), 'title');
 			textboxes[0].blur();
@@ -30,7 +30,7 @@ describe("ZoteroPane", function() {
 			var value = "Test";
 			var item = yield zp.newItem(Zotero.ItemTypes.getID('book'), {}, null, true);
 			var itemBox = doc.getElementById('zotero-editpane-item-box');
-			var textbox = doc.getAnonymousNodes(itemBox)[0].getElementsByTagName('textbox')[0];
+			var textbox = itemBox.querySelector('textarea');
 			textbox.value = value;
 			yield itemBox.blurOpenField();
 			item = yield Zotero.Items.getAsync(item.id);
@@ -73,7 +73,7 @@ describe("ZoteroPane", function() {
 				// TODO: Test changing a condition
 				function (dialog) {},
 				'accept',
-				'chrome://zotero/content/searchDialog.xul'
+				'chrome://zotero/content/searchDialog.xhtml'
 			);
 			var id = yield zp.newSearch();
 			yield promise;
@@ -86,7 +86,7 @@ describe("ZoteroPane", function() {
 			var promise = waitForDialog(
 				function (dialog) {},
 				'cancel',
-				'chrome://zotero/content/searchDialog.xul'
+				'chrome://zotero/content/searchDialog.xhtml'
 			);
 			var id = yield zp.newSearch();
 			yield promise;
@@ -141,22 +141,9 @@ describe("ZoteroPane", function() {
 	})
 	
 	describe("#viewAttachment", function () {
-		Components.utils.import("resource://zotero-unit/httpd.js");
 		var apiKey = Zotero.Utilities.randomString(24);
-		var port = 16213;
-		var baseURL = `http://localhost:${port}/`;
-		var server;
-		var responses = {};
+		var baseURL;
 		var httpd;
-		
-		var setup = Zotero.Promise.coroutine(function* (options = {}) {
-			server = sinon.fakeServer.create();
-			server.autoRespond = true;
-		});
-		
-		function setResponse(response) {
-			setHTTPResponse(server, baseURL, response, responses);
-		}
 		
 		async function downloadOnDemand() {
 			var item = new Zotero.Item("attachment");
@@ -211,15 +198,15 @@ describe("ZoteroPane", function() {
 		before(function () {
 			Zotero.HTTP.mock = sinon.FakeXMLHttpRequest;
 		})
-		beforeEach(function* () {
+		beforeEach(async function () {
+			var port;
+			({ httpd, port } = await startHTTPServer());
+			baseURL = `http://localhost:${port}/`;
 			Zotero.Prefs.set("api.url", baseURL);
-			Zotero.Sync.Runner.apiKey = apiKey;
-				
-			httpd = new HttpServer();
-			httpd.start(port);
 			
-			yield Zotero.Users.setCurrentUserID(1);
-			yield Zotero.Users.setCurrentUsername("testuser");
+			Zotero.Sync.Runner.apiKey = apiKey;
+			await Zotero.Users.setCurrentUserID(1);
+			await Zotero.Users.setCurrentUsername("testuser");
 		})
 		afterEach(function* () {
 			var defer = new Zotero.Promise.defer();
@@ -231,14 +218,12 @@ describe("ZoteroPane", function() {
 		});
 		
 		it("should download an attachment on-demand in as-needed mode", function* () {
-			yield setup();
 			Zotero.Sync.Storage.Local.downloadAsNeeded(Zotero.Libraries.userLibraryID, true);
 			yield downloadOnDemand();
 		});
 		
 		// As noted in viewAttachment(), this is only necessary for files modified before 5.0.85
 		it("should re-download a remotely modified attachment in as-needed mode", async function () {
-			await setup();
 			Zotero.Sync.Storage.Local.downloadAsNeeded(Zotero.Libraries.userLibraryID, true);
 			
 			var item = await importFileAttachment('test.txt');
@@ -291,7 +276,6 @@ describe("ZoteroPane", function() {
 		});
 		
 		it("should handle a 404 when re-downloading a remotely modified attachment in as-needed mode", async function () {
-			await setup();
 			Zotero.Sync.Storage.Local.downloadAsNeeded(Zotero.Libraries.userLibraryID, true);
 			
 			var item = await importFileAttachment('test.txt');
@@ -331,9 +315,31 @@ describe("ZoteroPane", function() {
 		});
 		
 		it("should download an attachment on-demand in at-sync-time mode", function* () {
-			yield setup();
 			Zotero.Sync.Storage.Local.downloadOnSync(Zotero.Libraries.userLibraryID, true);
 			yield downloadOnDemand();
+		});
+		
+		it("should update a PDF with a blank MIME type", async function () {
+			let attachment = await importFileAttachment('test.pdf');
+			// Can't use contentType argument to importFileAttachment() because blank string is ignored
+			attachment.attachmentContentType = '';
+			await attachment.saveTx();
+			await zp.viewAttachment(attachment.id);
+			assert.equal(attachment.attachmentContentType, 'application/pdf');
+		});
+		
+		it("should update an EPUB with an 'application/epub' MIME type", async function () {
+			let attachment = await importFileAttachment('stub.epub', { contentType: 'application/epub' });
+			assert.equal(attachment.attachmentContentType, 'application/epub');
+			await zp.viewAttachment(attachment.id);
+			assert.equal(attachment.attachmentContentType, 'application/epub+zip');
+		});
+		
+		it("should update an EPUB with an 'application/octet-stream' MIME type", async function () {
+			let attachment = await importFileAttachment('stub.epub', { contentType: 'application/octet-stream' });
+			assert.equal(attachment.attachmentContentType, 'application/octet-stream');
+			await zp.viewAttachment(attachment.id);
+			assert.equal(attachment.attachmentContentType, 'application/epub+zip');
 		});
 	})
 	
@@ -620,6 +626,51 @@ describe("ZoteroPane", function() {
 			assert.equal(OS.Path.basename(path), uniqueFilename)
 			await OS.File.exists(path);
 		});
+		
+		it("shouldn't change attachment title if different from filename", async function () {
+			var item = createUnsavedDataObject('item');
+			item.setField('title', 'Title');
+			await item.saveTx();
+			
+			var attachment = await importFileAttachment('test.png', { parentItemID: item.id });
+			attachment.setField('title', 'Image');
+			await attachment.saveTx();
+			await zp.selectItem(attachment.id);
+			
+			assert.isTrue(await zp.renameSelectedAttachmentsFromParents());
+			assert.equal(attachment.attachmentFilename, 'Title.png');
+			assert.equal(attachment.getField('title'), 'Image')
+		});
+		
+		it("should change attachment title if the same as filename", async function () {
+			var item = createUnsavedDataObject('item');
+			item.setField('title', 'Title');
+			await item.saveTx();
+			
+			var attachment = await importFileAttachment('test.png', { parentItemID: item.id });
+			attachment.setField('title', 'test.png');
+			await attachment.saveTx();
+			await zp.selectItem(attachment.id);
+			
+			assert.isTrue(await zp.renameSelectedAttachmentsFromParents());
+			assert.equal(attachment.attachmentFilename, 'Title.png');
+			assert.equal(attachment.getField('title'), 'Title.png')
+		});
+		
+		it("should change attachment title if the same as filename without extension", async function () {
+			var item = createUnsavedDataObject('item');
+			item.setField('title', 'Title');
+			await item.saveTx();
+			
+			var attachment = await importFileAttachment('test.png', { parentItemID: item.id });
+			attachment.setField('title', 'test');
+			await attachment.saveTx();
+			await zp.selectItem(attachment.id);
+			
+			assert.isTrue(await zp.renameSelectedAttachmentsFromParents());
+			assert.equal(attachment.attachmentFilename, 'Title.png');
+			assert.equal(attachment.getField('title'), 'Title.png')
+		});
 	});
 	
 	
@@ -701,18 +752,15 @@ describe("ZoteroPane", function() {
 			var promise = waitForDialog();
 			var modifyPromise = waitForItemEvent('modify');
 			
-			var event = doc.createEvent("KeyboardEvent");
-			event.initKeyEvent(
+			var event = new KeyboardEvent(
 				"keypress",
-				true,
-				true,
-				window,
-				false,
-				false,
-				false,
-				false,
-				DELETE_KEY_CODE,
-				0
+				{
+					key: 'Delete',
+					code: 'Delete',
+					keyCode: DELETE_KEY_CODE,
+					bubbles: true,
+					cancelable: true
+				}
 			);
 			tree.dispatchEvent(event);
 			yield promise;
@@ -742,18 +790,17 @@ describe("ZoteroPane", function() {
 			var promise = waitForDialog();
 			var modifyPromise = waitForItemEvent('modify');
 			
-			var event = doc.createEvent("KeyboardEvent");
-			event.initKeyEvent(
+			var event = new KeyboardEvent(
 				"keypress",
-				true,
-				true,
-				window,
-				false,
-				false,
-				!Zotero.isMac, // shift
-				Zotero.isMac, // meta
-				DELETE_KEY_CODE,
-				0
+				{
+					key: 'Delete',
+					code: 'Delete',
+					keyCode: DELETE_KEY_CODE,
+					bubbles: true,
+					cancelable: true,
+					shiftKey: !Zotero.isMac,
+					metaKey: Zotero.isMac,
+				}
 			);
 			tree.dispatchEvent(event);
 			yield promise;
@@ -824,9 +871,9 @@ describe("ZoteroPane", function() {
 				{
 					key: 'Delete',
 					code: 'Delete',
+					keyCode: DELETE_KEY_CODE,
 					metaKey: Zotero.isMac,
 					shiftKey: !Zotero.isMac,
-					keyCode: DELETE_KEY_CODE,
 					bubbles: true,
 					cancelable: true
 				}
@@ -1035,13 +1082,13 @@ describe("ZoteroPane", function() {
 	describe("#editSelectedCollection()", function () {
 		it("should edit a saved search", function* () {
 			var search = yield createDataObject('search');
-			var promise = waitForWindow('chrome://zotero/content/searchDialog.xul', function (win) {
+			var promise = waitForWindow('chrome://zotero/content/searchDialog.xhtml', function (win) {
 				let searchBox = win.document.getElementById('search-box');
 				var c = searchBox.search.getCondition(
 					searchBox.search.addCondition("title", "contains", "foo")
 				);
 				searchBox.addCondition(c);
-				win.document.documentElement.acceptDialog();
+				win.document.querySelector('dialog').acceptDialog();
 			});
 			yield zp.editSelectedCollection();
 			yield promise;
@@ -1052,13 +1099,13 @@ describe("ZoteroPane", function() {
 		it("should edit a saved search in a group", function* () {
 			var group = yield getGroup();
 			var search = yield createDataObject('search', { libraryID: group.libraryID });
-			var promise = waitForWindow('chrome://zotero/content/searchDialog.xul', function (win) {
+			var promise = waitForWindow('chrome://zotero/content/searchDialog.xhtml', function (win) {
 				let searchBox = win.document.getElementById('search-box');
 				var c = searchBox.search.getCondition(
 					searchBox.search.addCondition("title", "contains", "foo")
 				);
 				searchBox.addCondition(c);
-				win.document.documentElement.acceptDialog();
+				win.document.querySelector('dialog').acceptDialog();
 			});
 			yield zp.editSelectedCollection();
 			yield promise;

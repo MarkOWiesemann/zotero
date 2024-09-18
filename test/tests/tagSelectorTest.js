@@ -160,10 +160,10 @@ describe("Tag Selector", function () {
 				}
 			]);
 			var promise = waitForTagSelector(win);
-			yield Zotero.DB.executeTransaction(function* () {
-				yield item1.save();
-				yield item2.save();
-				yield item3.save();
+			yield Zotero.DB.executeTransaction(async function () {
+				await item1.save();
+				await item2.save();
+				await item3.save();
 			});
 			yield promise;
 			
@@ -192,10 +192,10 @@ describe("Tag Selector", function () {
 			var item3 = createUnsavedDataObject('item', { collections: [collection.id] });
 			item3.setTags([tag3]);
 			var promise = waitForTagSelector(win);
-			yield Zotero.DB.executeTransaction(function* () {
-				yield item1.save();
-				yield item2.save();
-				yield item3.save();
+			yield Zotero.DB.executeTransaction(async function () {
+				await item1.save();
+				await item2.save();
+				await item3.save();
 			});
 			yield promise;
 			
@@ -672,13 +672,14 @@ describe("Tag Selector", function () {
 			yield promise;
 			
 			promise = waitForTagSelector(win);
-			var promptPromise = waitForWindow("chrome://global/content/commonDialog.xul", function (dialog) {
-				dialog.document.getElementById('loginTextbox').value = newTag;
-				dialog.document.documentElement.acceptDialog();
+			var promptPromise = waitForDialog(function (dialogWindow, dialog) {
+				dialogWindow.document.getElementById('loginTextbox').value = newTag;
+				dialog.acceptDialog();
 			})
 			tagSelector.contextTag = {name: tag};
 			yield tagSelector.openRenamePrompt();
 			yield promise;
+			yield promptPromise;
 			
 			var tags = getRegularTags();
 			assert.include(tags, newTag);
@@ -695,9 +696,9 @@ describe("Tag Selector", function () {
 			yield promise;
 			
 			promise = waitForTagSelector(win);
-			waitForWindow("chrome://global/content/commonDialog.xul", function (dialog) {
-				dialog.document.getElementById('loginTextbox').value = newTag;
-				dialog.document.documentElement.acceptDialog();
+			waitForDialog(function (dialogWindow, dialog) {
+				dialogWindow.document.getElementById('loginTextbox').value = newTag;
+				dialog.acceptDialog();
 			});
 			tagSelector.contextTag = {name: oldTag};
 			yield tagSelector.openRenamePrompt();
@@ -729,7 +730,7 @@ describe("Tag Selector", function () {
 			
 			assert.include(getRegularTags(), "a");
 			
-			var dialogPromise = waitForDialog(false, undefined, 'chrome://zotero/content/tagColorChooser.xul');
+			var dialogPromise = waitForDialog(false, undefined, 'chrome://zotero/content/tagColorChooser.xhtml');
 			var tagSelectorPromise = waitForTagSelector(win);
 			tagSelector.contextTag = {name: tag};
 			yield tagSelector.openColorPickerWindow();

@@ -1,5 +1,8 @@
 name: CI
 on: [push, pull_request]
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     name: Build, Upload, Test
@@ -8,6 +11,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+          lfs: true
       
       - name: Install Node
         uses: actions/setup-node@v3
@@ -24,21 +28,16 @@ jobs:
       - name: Install packages for act
         if: env.ACT == 'true'
         run: apt update && apt install -y zstd xvfb dbus-x11 libgtk-3-0 libx11-xcb1 libdbus-glib-1-2 libxt6
-      
-      - name: Cache Firefox
-        id: firefox-cache
+      - name: Cache xulrunner
+        id: xulrunner-cache
         uses: actions/cache@v3
         with:
-          path: firefox-x86_64
-          key: firefox-60.9.0esr
+          path: app/xulrunner/firefox-x86_64
+          key: xulrunner-${{ hashFiles('app/config.sh', 'app/scripts/fetch_xulrunner') }}
       
-      - name: Download Firefox
-        if: steps.firefox-cache.outputs.cache-hit != 'true'
-        run: wget -O tarball "https://zotero-download.s3.us-east-1.amazonaws.com/dev/firefox-60.9.0esr-x86_64-modified.tar.gz"
-      
-      - name: Extract Firefox
-        if: steps.firefox-cache.outputs.cache-hit != 'true'
-        run: tar xvf tarball
+      - name: Fetch xulrunner
+        if: steps.xulrunner-cache.outputs.cache-hit != 'true'
+        run: app/scripts/fetch_xulrunner -p l
       
       - name: Cache Node modules
         id: node-cache
@@ -62,7 +61,7 @@ jobs:
           env.ACT != 'true'
           && github.repository == 'zotero/zotero'
           && github.event_name == 'push'
-          && (github.ref == 'refs/heads/6.0' || endsWith(github.ref, '-hotfix') || github.ref == 'refs/heads/gh-actions-ci-test')
+          && (github.ref == 'refs/heads/main' || endsWith(github.ref, '-hotfix'))
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -75,7 +74,7 @@ jobs:
           dpl --provider=s3 --bucket=zotero-download --local-dir=build-zip --upload-dir=ci/client --acl=public-read --skip_cleanup=true
       
       - name: Run tests
-        run: xvfb-run test/runtests.sh -x firefox-x86_64/firefox -f
+        run: xvfb-run test/runtests.sh -f
 
       - name: Cache utilities Node modules
         id: utilities-node-cache

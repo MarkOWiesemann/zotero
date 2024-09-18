@@ -110,6 +110,10 @@ const TabBar = forwardRef(function (props, ref) {
 	}
 	
 	function handleTabMouseDown(event, id) {
+		// Don't select tab if it'll be closed with middle button click on mouse up
+		if (event.button === 1) {
+			return;
+		}
 		if (event.button === 2) {
 			let { screenX, screenY } = event;
 			// Popup gets immediately closed without this
@@ -282,7 +286,7 @@ const TabBar = forwardRef(function (props, ref) {
 				onDragStart={(event) => handleDragStart(event, id, index)}
 				onDragEnd={handleDragEnd}
 			>
-				<div className="tab-name">{iconBackgroundImage &&
+				<div className="tab-name" dir="auto">{iconBackgroundImage &&
 					<span className="icon-bg" style={{ backgroundImage: iconBackgroundImage }}/>}{title}</div>
 				<div
 					className="tab-close"
@@ -323,6 +327,7 @@ const TabBar = forwardRef(function (props, ref) {
 						onDragOver={handleTabBarDragOver}
 						onMouseOut={handleTabBarMouseOut}
 						onScroll={updateScrollArrows}
+						dir={Zotero.dir}
 					>
 						{tabs.map((tab, index) => renderTab(tab, index))}
 					</div>

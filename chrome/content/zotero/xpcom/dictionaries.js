@@ -136,6 +136,8 @@ Zotero.Dictionaries = new function () {
 			}
 
 			zipReader.close();
+			zipReader = null
+			Cu.forceGC();
 			await OS.File.remove(xpiPath);
 			await _loadDirectory(dir);
 		}
@@ -180,7 +182,8 @@ Zotero.Dictionaries = new function () {
 				let dicPath = manifest.dictionaries[locale];
 				let affPath = OS.Path.join(dictionary.dir, ...dicPath.split(/\//)).slice(0, -3) + 'aff';
 				Zotero.debug(`Removing ${locale} dictionary`);
-				_spellChecker.removeDictionary(locale, Zotero.File.pathToFile(affPath));
+				let file = new FileUtils.File(affPath);
+				_spellChecker.removeDictionary(locale, Services.io.newFileURI(file));
 			}
 		}
 		catch (e) {
@@ -247,9 +250,12 @@ Zotero.Dictionaries = new function () {
 			}
 		}
 		if (!name && inlineSpellChecker) {
-			name = inlineSpellChecker.getDictionaryDisplayName(locale)
+			let names = Services.intl.getLocaleDisplayNames(undefined, [locale]);
+			if (names.length) {
+				name = names[0];
+			}
 		}
-		return name || name;
+		return name || locale;
 	};
 	
 	/**
@@ -296,8 +302,8 @@ Zotero.Dictionaries = new function () {
 			locales.push(locale);
 			let dicPath = manifest.dictionaries[locale];
 			let affPath = OS.Path.join(dir, ...dicPath.split(/\//)).slice(0, -3) + 'aff';
-			Zotero.debug(`Adding ${locale} dictionary`);
-			_spellChecker.addDictionary(locale, Zotero.File.pathToFile(affPath));
+			let file = new FileUtils.File(affPath);
+			_spellChecker.addDictionary(locale, Services.io.newFileURI(file));
 			_dictionaries.push({ id, locale, version, dir });
 		}
 	}

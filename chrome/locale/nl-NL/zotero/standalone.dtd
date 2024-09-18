@@ -9,7 +9,6 @@
 <!ENTITY quitApplicationCmdMac.label "Zotero afsluiten">
 <!ENTITY quitApplicationCmdMac.key "Q">
 
-
 <!ENTITY fileMenu.label "Bestand">
 <!ENTITY fileMenu.accesskey "B">
 <!ENTITY saveCmd.label "Opslaan...">
@@ -33,10 +32,9 @@
 <!ENTITY quitApplicationCmd.label "Afsluiten">
 <!ENTITY quitApplicationCmd.accesskey "A">
 
-
 <!ENTITY copyCitationCmd.label "Verwijzing kopiëren">
 <!ENTITY copyBibliographyCmd.label "Bibliografie kopiëren">
-<!ENTITY copyNoteCmd.label "Copy Note">
+<!ENTITY copyNoteCmd.label "Aantekening kopiëren">
 
 <!ENTITY bidiSwitchPageDirectionItem.label "Paginarichting wijzigen">
 <!ENTITY bidiSwitchPageDirectionItem.accesskey "g">
@@ -44,12 +42,10 @@
 <!ENTITY bidiSwitchTextDirectionItem.accesskey "w">
 <!ENTITY bidiSwitchTextDirectionItem.commandkey "X">
 
-
-<!ENTITY goMenu.label "Go">
-
+<!ENTITY goMenu.label "Gaan">
 
 <!ENTITY viewMenu.label "Beeld">
-<!ENTITY viewMenu.accesskey "V">
+<!ENTITY viewMenu.accesskey "e">
 <!ENTITY layout.label "Lay-out">
 <!ENTITY standardView.label "Standaard">
 <!ENTITY stackedView.label "Gestapeld">
@@ -60,7 +56,6 @@
 <!ENTITY fontSize.label "Lettergrootte">
 <!ENTITY noteFontSize.label "Lettergrootte notities">
 
-
 <!ENTITY toolsMenu.label "Opties">
 <!ENTITY toolsMenu.accesskey "O">
 <!ENTITY installConnector.label "Browser Connector installeren">
@@ -68,18 +63,14 @@
 <!ENTITY addons.label "Add-ons">
 <!ENTITY developer.label "Ontwikkelaar">
 
-
 <!ENTITY minimizeWindow.key "m">
 <!ENTITY minimizeWindow.label "Minimaliseren">
 <!ENTITY bringAllToFront.label "Alles naar voren brengen">
 <!ENTITY zoomWindow.label "Zoom">
 <!ENTITY windowMenu.label "Venster">
 
-
 <!ENTITY helpMenu.label "Help">
 <!ENTITY helpMenu.accesskey "H">
-
-
 <!ENTITY helpMenuWin.label "Help">
 <!ENTITY helpMenuWin.accesskey "H">
 <!ENTITY helpMac.commandkey "?">
@@ -90,17 +81,17 @@
 <!ENTITY helpTroubleshootingInfo.label "Probleemoplossingsinformatie">
 <!ENTITY helpTroubleshootingInfo.accesskey "P">
 <!ENTITY helpFeedbackPage.label "Discussieforums">
-<!ENTITY helpFeedbackPage.accesskey "F">
+<!ENTITY helpFeedbackPage.accesskey "D">
 
 <!ENTITY helpReportErrors.label "Fouten rapporteren…">
 <!ENTITY helpReportErrors.accesskey "F">
 
 <!ENTITY debugOutputLogging.label "Foutopsporingsberichten bewaren">
-<!ENTITY debugOutputLogging.accesskey "L">
+<!ENTITY debugOutputLogging.accesskey "b">
 <!ENTITY debugOutputLogging.submit "Uitvoer versturen">
 <!ENTITY debugOutputLogging.view "Uitvoer bekijken">
 <!ENTITY debugOutputLogging.clear "Uitvoer wissen">
-<!ENTITY debugOutputLogging.restartWithLoggingEnabled "Restart with Logging Enabled…">
+<!ENTITY debugOutputLogging.restartWithLoggingEnabled "Opnieuw starten met logging ingeschakeld">
 
 <!ENTITY helpCheckForUpdates.label "Controleren op updates…">
 <!ENTITY helpCheckForUpdates.accesskey "u">

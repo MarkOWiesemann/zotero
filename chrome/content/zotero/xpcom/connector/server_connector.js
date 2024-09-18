@@ -333,7 +333,7 @@ Zotero.Server.Connector.SaveSession.prototype._updateItems = Zotero.serial(async
 			this._items.add(newItem);
 		}
 		
-		// If the item is now a child item (e.g., from Retrieve Metadata for PDF), update the
+		// If the item is now a child item (e.g., from Retrieve Metadata), update the
 		// parent item instead
 		if (!item.isTopLevelItem()) {
 			item = item.parentItem;
@@ -493,8 +493,7 @@ Zotero.Server.Connector.Detect.prototype = {
 			)
 			: null;
 		
-		var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-			.createInstance(Components.interfaces.nsIDOMParser);
+		var parser = new DOMParser();
 		var doc = parser.parseFromString(`<html>${data.html}</html>`, 'text/html');
 		doc = Zotero.HTTP.wrapDocument(doc, data.uri);
 		
@@ -931,6 +930,8 @@ Zotero.Server.Connector.SaveSingleFile.prototype = {
 	 * Save SingleFile snapshot to pending attachments
 	 */
 	init: async function (requestData) {
+		const { HiddenBrowser } = ChromeUtils.import('chrome://zotero/content/HiddenBrowser.jsm');
+
 		// Retrieve payload
 		let data = requestData.data;
 
@@ -983,27 +984,19 @@ Zotero.Server.Connector.SaveSingleFile.prototype = {
 
 			let url = session.pendingAttachments[0][1].url;
 
-			snapshotContent = await new Zotero.Promise(function (resolve, reject) {
-				var browser = Zotero.HTTP.loadDocuments(
-					url,
-					Zotero.Promise.coroutine(function* () {
-						try {
-							resolve(yield Zotero.Utilities.Internal.snapshotDocument(browser.contentDocument));
-						}
-						catch (e) {
-							Zotero.logError(e);
-							reject(e);
-						}
-						finally {
-							Zotero.Browser.deleteHiddenBrowser(browser);
-						}
-					}),
-					undefined,
-					undefined,
-					true,
-					cookieSandbox
-				);
+			let browser = await HiddenBrowser.create(url, {
+				requireSuccessfulStatus: true,
+				docShell: {
+					allowImages: true
+				},
+				cookieSandbox,
 			});
+			try {
+				snapshotContent = await HiddenBrowser.snapshot(browser);
+			}
+			finally {
+				HiddenBrowser.destroy(browser);
+			}
 		}
 		else {
 			snapshotContent = data.snapshotContent;
@@ -1187,21 +1180,19 @@ Zotero.Server.Connector.SaveSnapshot.prototype = {
 				cookieSandbox
 			});
 			
-			// Automatically recognize PDF
-			Zotero.RecognizePDF.autoRecognizeItems([item]);
+			// Automatically recognize PDF/EPUB
+			Zotero.RecognizeDocument.autoRecognizeItems([item]);
 			
 			return item;
 		}
 		
-		var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-			.createInstance(Components.interfaces.nsIDOMParser);
-		parser.init(null, Services.io.newURI(data.url));
-		var doc = parser.parseFromString(`<html>${data.html}</html>`, 'text/html');
-		doc = Zotero.HTTP.wrapDocument(doc, data.url);
-		
-		let title = doc.title;
-		if (!data.html) {
-			title = data.title;
+		if (data.html) {
+			var parser = new DOMParser();
+			var doc = parser.parseFromString(`<html>${data.html}</html>`, 'text/html');
+			doc = Zotero.HTTP.wrapDocument(doc, data.url);
+			var title = doc.title;
+		} else {
+			title = data.title || data.url;
 		}
 		
 		// Create new webpage item
@@ -1695,7 +1686,7 @@ Zotero.Server.Connector.Ping.prototype = {
 	 * Sends 200 and HTML status on GET requests
 	 * @param data {Object} request information defined in connector.js
 	 */
-	init: function (req) {
+	init: async function (req) {
 		if (req.method == 'GET') {
 			return [200, "text/html", '<!DOCTYPE html><html>'
 				+ '<body>Zotero is running</body></html>'];
@@ -1705,11 +1696,13 @@ Zotero.Server.Connector.Ping.prototype = {
 				//Zotero.debug("Setting active URL to " + req.data.activeURL);
 				Zotero.QuickCopy.lastActiveURL = req.data.activeURL;
 			}
+			let translatorsHash = await Zotero.Translators.getTranslatorsHash();
 			
 			let response = {
 				prefs: {
 					automaticSnapshots: Zotero.Prefs.get('automaticSnapshots'),
-					googleDocsAddNoteEnabled: true
+					googleDocsAddNoteEnabled: true,
+					translatorsHash
 				}
 			};
 			if (Zotero.QuickCopy.hasSiteSettings()) {

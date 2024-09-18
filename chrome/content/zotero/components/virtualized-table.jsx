@@ -576,7 +576,11 @@ class VirtualizedTable extends React.Component {
 		if (e.key == 'ContextMenu' || (e.key == 'F10' && e.shiftKey)) {
 			let selectedElem = document.querySelector(`#${this._jsWindowID} [aria-selected=true]`);
 			let boundingRect = selectedElem.getBoundingClientRect();
-			this.props.onItemContextMenu(e, boundingRect.left + 50, boundingRect.bottom);
+			this.props.onItemContextMenu(
+				e,
+				window.screenX + boundingRect.left + 50,
+				window.screenY + boundingRect.bottom
+			);
 			return;
 		}
 
@@ -679,7 +683,7 @@ class VirtualizedTable extends React.Component {
 			if (!modifierClick && !this.selection.isSelected(index)) {
 				this._onSelection(index, false, false);
 			}
-			this.props.onItemContextMenu(e, e.clientX, e.clientY);
+			this.props.onItemContextMenu(e, window.screenX + e.clientX, window.screenY + e.clientY);
 		}
 		// All modifier clicks handled in mouseUp per mozilla itemtree convention
 		if (!modifierClick && !this.selection.isSelected(index)) {
@@ -803,8 +807,8 @@ class VirtualizedTable extends React.Component {
 		const aRect = a.getBoundingClientRect();
 		const bRect = b.getBoundingClientRect();
 		const resizingRect = resizing.getBoundingClientRect();
-		let offset = aRect.x;
-		if (aColumn.dataKey != resizingColumn.dataKey) {
+		let offset = aRect.left;
+		if (aColumn.dataKey != resizingColumn.dataKey && !Zotero.rtl) {
 			offset += resizingRect.width;
 		}
 		const widthSum = aRect.width + bRect.width;
@@ -1015,17 +1019,23 @@ class VirtualizedTable extends React.Component {
 			xulElem.setAttribute('tooltip', 'html-tooltip');
 		}
 		if (document.querySelector('tooltip#html-tooltip')) return;
-		let tooltip = document.createElement('tooltip');
+		let tooltip = document.createXULElement('tooltip');
 		tooltip.id = 'html-tooltip';
 		tooltip.addEventListener('popupshowing', function(e) {
-			let tooltipTitleNode = document.tooltipNode.closest('div *[title], iframe *[title], browser *[title]');
-			if (document.tooltipNode && tooltipTitleNode) {
+			let tooltipTitleNode = tooltip.triggerNode?.closest('div *[title], iframe *[title], browser *[title]');
+			if (tooltipTitleNode) {
 				this.setAttribute('label', tooltipTitleNode.getAttribute('title'));
 				return;
 			}
 			e.preventDefault();
 		});
-		document.documentElement.appendChild(tooltip);
+
+		let popupset = document.querySelector('popupset');
+		if (!popupset) {
+			popupset = document.createXULElement('popupset');
+			document.documentElement.appendChild(popupset);
+		}
+		popupset.appendChild(tooltip);
 	}
 	
 	_setAlternatingRows() {
@@ -1080,8 +1090,22 @@ class VirtualizedTable extends React.Component {
 		return this._getVisibleColumns().map((column, index) => {
 			let columnName = formatColumnName(column);
 			let label = columnName;
+			// Allow custom icons to be used in column headers
+			if (column.iconPath) {
+				column.iconLabel = <span
+					className="icon icon-bg"
+					style={{backgroundImage: `url("${column.iconPath}")`}}>
+				</span>;
+			}
 			if (column.iconLabel) {
 				label = column.iconLabel;
+			}
+			if (column.htmlLabel) {
+				if (React.isValidElement(column.htmlLabel)) {
+					label = column.htmlLabel;
+				} else if (typeof column.htmlLabel === "string") {
+					label = <span dangerouslySetInnerHTML={{ __html: column.htmlLabel }} />;
+				}
 			}
 			let resizer = (<Draggable
 				onDragStart={this._handleResizerDragStart.bind(this, index)}
@@ -1157,6 +1181,10 @@ class VirtualizedTable extends React.Component {
 			ref: ref => this._topDiv = ref,
 			tabIndex: 0,
 			role: this.props.role,
+			// XUL's chromedir attribute doesn't work with CSS :dir selectors,
+			// so we'll manually propagate the locale's script direction to the
+			// table.
+			dir: Zotero.Locale.defaultScriptDirection(Zotero.locale),
 		};
 		if (this.props.hide) {
 			props.style = { display: "none" };
@@ -1228,7 +1256,14 @@ class VirtualizedTable extends React.Component {
 		this._jsWindow.update(this._getWindowedListOptions());
 		this._setAlternatingRows();
 		this._jsWindow.invalidate();
-	}
+	};
+
+	/**
+	 * @param customRowHeights an array of tuples specifying row index and row height: e.g. [[1, 10], [5, 10]]
+	 */
+	updateCustomRowHeights = (customRowHeights=[]) => {
+		return this._jsWindow.update({customRowHeights});
+	};
 	
 	_getRowHeight() {
 		let rowHeight = this.props.linesPerRow * this._renderedTextHeight;
@@ -1252,7 +1287,7 @@ class VirtualizedTable extends React.Component {
 	}
 
 	_getRenderedTextHeight() {
-		let div = document.createElementNS("http://www.w3.org/1999/xhtml", 'div');
+		let div = document.createElement('div');
 		div.style.visibility = "hidden";
 		div.textContent = "Zotero";
 		document.documentElement.appendChild(div);
@@ -1314,6 +1349,12 @@ class VirtualizedTable extends React.Component {
 		if (!this._jsWindow) return false;
 		return row >= this._jsWindow.getFirstVisibleRow()
 			&& row <= this._jsWindow.getLastVisibleRow();
+	}
+
+	async _resetColumns() {
+		this.invalidate();
+		this._columns = new Columns(this);
+		await new Promise((resolve) => {this.forceUpdate(resolve)});
 	}
 }
 
@@ -1425,7 +1466,7 @@ var Columns = class {
 				this._columnStyleMap[column.dataKey] = ruleIndex;
 			}
 		} else {
-			this._stylesheet = document.createElementNS("http://www.w3.org/1999/xhtml", 'style');
+			this._stylesheet = document.createElement('style');
 			this._stylesheet.className = stylesheetClass;
 			document.children[0].appendChild(this._stylesheet);
 			this._columnStyleMap = {};
@@ -1438,7 +1479,7 @@ var Columns = class {
 	}
 
 	_getColumnPrefsToPersist(column) {
-		let persistKeys = column.zoteroPersist;
+		let persistKeys = new Set(column.zoteroPersist); 
 		if (!persistKeys) persistKeys = new Set();
 		// Always persist
 		['ordinal', 'hidden', 'sortDirection'].forEach(k => persistKeys.add(k));
@@ -1571,7 +1612,7 @@ var Columns = class {
 					column.sortDirection *= -1;
 				}
 				else {
-					column.sortDirection = column.defaultSort || 1;
+					column.sortDirection = column.sortReverse ? -1 : 1;
 				}
 			}
 		});
@@ -1584,16 +1625,19 @@ var Columns = class {
 	}
 };
 
-function renderCell(index, data, column) {
-	let span = document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
+function renderCell(index, data, column, dir = null) {
+	column = column || { columnName: "" };
+	let span = document.createElement('span');
 	span.className = `cell ${column.className}`;
 	span.innerText = data;
+	if (dir) span.dir = dir;
 	return span;
 }
 
-function renderCheckboxCell(index, data, column) {
-	let span = document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
+function renderCheckboxCell(index, data, column, dir = null) {
+	let span = document.createElement('span');
 	span.className = `cell checkbox ${column.className}`;
+	if (dir) span.dir = dir;
 	span.setAttribute('role', 'checkbox');
 	span.setAttribute('aria-checked', data);
 	if (data) {
@@ -1610,7 +1654,7 @@ function makeRowRenderer(getRowData) {
 			div.innerHTML = "";
 		}
 		else {
-			div = document.createElementNS("http://www.w3.org/1999/xhtml", 'div');
+			div = document.createElement('div');
 			div.className = "row";
 		}
 
@@ -1618,15 +1662,20 @@ function makeRowRenderer(getRowData) {
 		div.classList.toggle('focused', selection.focused == index);
 		const rowData = getRowData(index);
 		
-		for (let column of columns) {
-			if (column.hidden) continue;
+		if (columns.length) {
+			for (let column of columns) {
+				if (column.hidden) continue;
 
-			if (column.type === 'checkbox') {
-				div.appendChild(renderCheckboxCell(index, rowData[column.dataKey], column));
+				if (column.type === 'checkbox') {
+					div.appendChild(renderCheckboxCell(index, rowData[column.dataKey], column));
+				}
+				else {
+					div.appendChild(renderCell(index, rowData[column.dataKey], column));
+				}
 			}
-			else {
-				div.appendChild(renderCell(index, rowData[column.dataKey], column));
-			}
+		}
+		else {
+			div.appendChild(renderCell(index, rowData));
 		}
 
 		return div;

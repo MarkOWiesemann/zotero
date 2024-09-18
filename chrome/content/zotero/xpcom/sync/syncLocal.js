@@ -140,7 +140,7 @@ Zotero.Sync.Data.Local = {
 				acceptLabel: Zotero.getString('account.confirmDelete.button'),
 				extra2Label: Zotero.getString('general.moreInformation')
 			};
-			win.openDialog("chrome://zotero/content/hardConfirmationDialog.xul", "",
+			win.openDialog("chrome://zotero/content/hardConfirmationDialog.xhtml", "",
 				"chrome,dialog,modal,centerscreen", io);
 			
 			if (io.accept) {
@@ -400,7 +400,6 @@ Zotero.Sync.Data.Local = {
 	_getAPIKeyLoginInfo: function () {
 		try {
 			var logins = Services.logins.findLogins(
-				{},
 				this._loginManagerHost,
 				null,
 				this._loginManagerRealm
@@ -449,7 +448,7 @@ Zotero.Sync.Data.Local = {
 		var loginManager = Components.classes["@mozilla.org/login-manager;1"]
 			.getService(Components.interfaces.nsILoginManager);
 		try {
-			var logins = loginManager.findLogins({}, loginManagerHost, null, loginManagerRealm);
+			var logins = loginManager.findLogins(loginManagerHost, null, loginManagerRealm);
 		}
 		catch (e) {
 			Zotero.logError(e);
@@ -464,7 +463,7 @@ Zotero.Sync.Data.Local = {
 		}
 		
 		// Pre-4.0.28.5 format, broken for findLogins and removeLogin in Fx41,
-		var logins = loginManager.findLogins({}, loginManagerHost, "", null);
+		var logins = loginManager.findLogins(loginManagerHost, "", null);
 		for (let i = 0; i < logins.length; i++) {
 			if (logins[i].username == username
 					&& logins[i].formSubmitURL == "Zotero Sync Server") {
@@ -484,7 +483,7 @@ Zotero.Sync.Data.Local = {
 		var loginManager = Components.classes["@mozilla.org/login-manager;1"]
 			.getService(Components.interfaces.nsILoginManager);
 		try {
-			var logins = loginManager.findLogins({}, loginManagerHost, null, loginManagerRealm);
+			var logins = loginManager.findLogins(loginManagerHost, null, loginManagerRealm);
 		}
 		catch (e) {
 			Zotero.logError(e);
@@ -898,8 +897,8 @@ Zotero.Sync.Data.Local = {
 				// Errors have to be thrown in order to roll back the transaction, so catch those here
 				// and continue
 				try {
-					yield Zotero.DB.executeTransaction(function* () {
-						let obj = yield objectsClass.getByLibraryAndKeyAsync(
+					yield Zotero.DB.executeTransaction(async function () {
+						let obj = await objectsClass.getByLibraryAndKeyAsync(
 							libraryID, objectKey, { noCache: true }
 						);
 						let restored = false;
@@ -923,7 +922,7 @@ Zotero.Sync.Data.Local = {
 								Zotero.debug("Local " + objectType + " " + obj.libraryKey
 										+ " has been modified since last sync", 4);
 								
-								let cachedJSON = yield this.getCacheObject(
+								let cachedJSON = await this.getCacheObject(
 									objectType, obj.libraryID, obj.key, obj.version
 								);
 								let result = this._reconcileChanges(
@@ -947,7 +946,7 @@ Zotero.Sync.Data.Local = {
 									if (result.localChanged) {
 										saveOptions.saveAsUnsynced = true;
 									}
-									let saveResults = yield this._saveObjectFromJSON(
+									let saveResults = await this._saveObjectFromJSON(
 										obj,
 										jsonObject,
 										saveOptions
@@ -1028,7 +1027,7 @@ Zotero.Sync.Data.Local = {
 							saveOptions.isNewObject = true;
 							
 							// Check if object has been deleted locally
-							let dateDeleted = yield this.getDateDeleted(
+							let dateDeleted = await this.getDateDeleted(
 								objectType, libraryID, objectKey
 							);
 							if (dateDeleted) {
@@ -1064,7 +1063,7 @@ Zotero.Sync.Data.Local = {
 								case 'search':
 									Zotero.debug(`${ObjectType} ${objectKey} was modified remotely `
 										+ '-- restoring');
-									yield this.removeObjectsFromDeleteLog(
+									await this.removeObjectsFromDeleteLog(
 										objectType,
 										libraryID,
 										[objectKey]
@@ -1081,13 +1080,13 @@ Zotero.Sync.Data.Local = {
 							obj = new Zotero[ObjectType];
 							obj.libraryID = libraryID;
 							obj.key = objectKey;
-							yield obj.loadPrimaryData();
+							await obj.loadPrimaryData();
 							
 							// Don't cache new items immediately, which skips reloading after save
 							saveOptions.skipCache = true;
 						}
 						
-						let saveResults = yield this._saveObjectFromJSON(obj, jsonObject, saveOptions);
+						let saveResults = await this._saveObjectFromJSON(obj, jsonObject, saveOptions);
 						if (restored) {
 							saveResults.restored = true;
 						}
@@ -1341,8 +1340,8 @@ Zotero.Sync.Data.Local = {
 				// Errors have to be thrown in order to roll back the transaction, so catch
 				// those here and continue
 				try {
-					yield Zotero.DB.executeTransaction(function* () {
-						let obj = yield objectsClass.getByLibraryAndKeyAsync(
+					yield Zotero.DB.executeTransaction(async function () {
+						let obj = await objectsClass.getByLibraryAndKeyAsync(
 							libraryID, json.key, { noCache: true }
 						);
 						// Update object with merge data
@@ -1350,7 +1349,7 @@ Zotero.Sync.Data.Local = {
 							// Delete local object
 							if (json.deleted) {
 								try {
-									yield obj.erase({
+									await obj.erase({
 										notifierQueue
 									});
 								}
@@ -1385,14 +1384,14 @@ Zotero.Sync.Data.Local = {
 							obj = new Zotero[ObjectType];
 							obj.libraryID = libraryID;
 							obj.key = json.key;
-							yield obj.loadPrimaryData();
+							await obj.loadPrimaryData();
 							
 							// Don't cache new items immediately,
 							// which skips reloading after save
 							saveOptions.skipCache = true;
 						}
 						
-						let saveResults = yield this._saveObjectFromJSON(obj, json, saveOptions);
+						let saveResults = await this._saveObjectFromJSON(obj, json, saveOptions);
 						results.push(saveResults);
 						if (!saveResults.processed) {
 							throw saveResults.error;
@@ -1440,7 +1439,7 @@ Zotero.Sync.Data.Local = {
 				conflicts
 			}
 		};
-		var url = 'chrome://zotero/content/merge.xul';
+		var url = 'chrome://zotero/content/merge.xhtml';
 		var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
 		   .getService(Components.interfaces.nsIWindowMediator);
 		var lastWin = wm.getMostRecentWindow("navigator:browser");
@@ -1762,8 +1761,7 @@ Zotero.Sync.Data.Local = {
 		
 		var localChanged = false;
 		var normalizeHTML = (str) => {
-			let parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-				.createInstance(Components.interfaces.nsIDOMParser);
+			let parser = new DOMParser();
 			str = parser.parseFromString(str, 'text/html');
 			str = str.body.textContent;
 			// Normalize internal spaces

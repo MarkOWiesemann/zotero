@@ -29,7 +29,11 @@ var Zotero_Tag_Color_Chooser = new function() {
 	var _io;
 	
 	this.init = function () {
-		var dialog = document.getElementById('tag-color-chooser');
+		var dialog = document.querySelector('dialog');
+
+		window.addEventListener('dialogaccept', () => Zotero_Tag_Color_Chooser.onDialogAccept());
+		window.addEventListener('dialogcancel', () => Zotero_Tag_Color_Chooser.onDialogCancel());
+		window.addEventListener('dialogextra1', () => Zotero_Tag_Color_Chooser.onDialogRemoveColor());
 		
 		try {
 			// Set font size from pref
@@ -47,15 +51,6 @@ var Zotero_Tag_Color_Chooser = new function() {
 			
 			var colorPicker = document.getElementById('color-picker');
 			var tagPosition = document.getElementById('tag-position');
-			
-			colorPicker.setAttribute('cols', 3);
-			colorPicker.setAttribute('tileWidth', 24);
-			colorPicker.setAttribute('tileHeight', 24);
-			colorPicker.colors = [
-				'#FF6666', '#FF8C19', '#999999',
-				'#5FB236', '#009980', '#2EA8E5',
-				'#576DD9', '#A28AE5', '#A6507B'
-			];
 			
 			var maxTags = document.getElementById('max-tags');
 			maxTags.value = Zotero.getString('tagColorChooser.maxTags', Zotero.Tags.MAX_COLORED_TAGS);
@@ -128,7 +123,7 @@ var Zotero_Tag_Color_Chooser = new function() {
 		var msg = Zotero.getString('tagColorChooser.numberKeyInstructions');
 		var matches = msg.match(/(.+)\$NUMBER(.+)/);
 		
-		var num = document.createElement('label');
+		var num = document.createXULElement('label');
 		num.id = 'number-key';
 		num.setAttribute('value', parseInt(tagPosition.value) + 1);
 		

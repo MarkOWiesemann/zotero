@@ -26,7 +26,7 @@
 
 Components.utils.import("resource://gre/modules/Services.jsm");
 import ItemTree from 'zotero/itemTree';
-import { getDefaultColumnsByDataKeys } from 'zotero/itemTreeColumns';
+import { COLUMNS } from 'zotero/itemTreeColumns';
 
 
 var ZoteroAdvancedSearch = new function() {
@@ -56,17 +56,25 @@ var ZoteroAdvancedSearch = new function() {
 		});
 		
 		var elem = document.getElementById('zotero-items-tree');
+		const columns = COLUMNS.map((column) => {
+			column = Object.assign({}, column);
+			column.hidden = !['title', 'firstCreator'].includes(column.dataKey);
+			return column;
+		});
 		this.itemsView = await ItemTree.init(elem, {
 			id: "advanced-search",
 			dragAndDrop: true,
+			persistColumns: true,
+			columnPicker: true,
 			onActivate: this.onItemActivate.bind(this),
-			columns: getDefaultColumnsByDataKeys(['title', 'firstCreator']),
+			columns,
 		});
 
 		// A minimal implementation of Zotero.CollectionTreeRow
 		var collectionTreeRow = {
 			view: {},
 			ref: _searchBox.search,
+			visibilityGroup: 'default',
 			isSearchMode: () => true,
 			getItems: async () => [],
 			isLibrary: () => false,
@@ -75,6 +83,8 @@ var ZoteroAdvancedSearch = new function() {
 			isPublications: () => false,
 			isDuplicates: () => false,
 			isFeed: () => false,
+			isFeeds: () => false,
+			isFeedsOrFeed: () => false,
 			isShare: () => false,
 			isTrash: () => false
 		};
@@ -94,6 +104,7 @@ var ZoteroAdvancedSearch = new function() {
 		var collectionTreeRow = {
 			view: {},
 			ref: _searchBox.search,
+			visibilityGroup: 'default',
 			isSearchMode: () => true,
 			getItems: async function () {
 				await Zotero.Libraries.get(_libraryID).waitForDataLoad('item');
@@ -109,11 +120,13 @@ var ZoteroAdvancedSearch = new function() {
 			isPublications: () => false,
 			isDuplicates: () => false,
 			isFeed: () => false,
+			isFeeds: () => false,
+			isFeedsOrFeed: () => false,
 			isShare: () => false,
 			isTrash: () => false
 		};
 		
-		this.itemsView.changeCollectionTreeRow(collectionTreeRow);
+		return this.itemsView.changeCollectionTreeRow(collectionTreeRow);
 	}
 	
 	

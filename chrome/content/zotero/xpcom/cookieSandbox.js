@@ -164,7 +164,7 @@ Zotero.CookieSandbox.prototype = {
 	 * @param {nsIInterfaceRequestor} ir
 	 */
 	"attachToInterfaceRequestor": function(ir) {
-		Zotero.CookieSandbox.Observer.trackedInterfaceRequestors.push(Components.utils.getWeakReference(ir.QueryInterface(Components.interfaces.nsIInterfaceRequestor)));
+		Zotero.CookieSandbox.Observer.trackedInterfaceRequestors.push(Cu.getWeakReference(ir));
 		Zotero.CookieSandbox.Observer.trackedInterfaceRequestorSandboxes.push(this);
 	},
 	
@@ -336,8 +336,7 @@ Zotero.CookieSandbox.Observer = new function() {
 			} else {
 				// try the browser
 				try {
-					browser = notificationCallbacks.getInterface(Ci.nsIWebNavigation)
-						.QueryInterface(Ci.nsIDocShell).chromeEventHandler;
+					browser = notificationCallbacks.getInterface(Ci.nsILoadContext).topFrameElement;
 				} catch(e) {}
 				if(browser) {
 					tested = true;

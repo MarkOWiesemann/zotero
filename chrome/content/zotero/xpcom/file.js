@@ -37,9 +37,8 @@ Zotero.File = new function () {
 	this.putContents = putContents;
 	this.getValidFileName = getValidFileName;
 	this.truncateFileName = truncateFileName;
-	this.getCharsetFromFile = getCharsetFromFile;
-	this.addCharsetListener = addCharsetListener;
 	
+	this.REPLACEMENT_CHARACTER = "\uFFFD";
 	
 	this.pathToFile = function (pathOrFile) {
 		try {
@@ -57,8 +56,8 @@ Zotero.File = new function () {
 	}
 	
 	
-	this.pathToFileURI = function (path) {
-		var file = new FileUtils.File(path);
+	this.pathToFileURI = function (pathOrFile) {
+		var file = this.pathToFile(pathOrFile);
 		return Services.io.newFileURI(file).spec;
 	}
 	
@@ -117,12 +116,12 @@ Zotero.File = new function () {
 	/**
 	 * Get the first 200 bytes of a source as a string (multibyte-safe)
 	 *
-	 * @param {nsIURI|nsIFile|string spec|nsIChannel|nsIInputStream} source - The source to read
+	 * @param {string path|nsIFile|file URI} source - The source to read
 	 * @return {Promise}
 	 */
-	this.getSample = function (file) {
+	this.getSample = async function (file) {
 		var bytes = 200;
-		return this.getContentsAsync(file, null, bytes);
+		return this.getBinaryContentsAsync(file, bytes);
 	}
 	
 	
@@ -212,7 +211,7 @@ Zotero.File = new function () {
 	 * @param {Integer} [maxLength] Maximum length to fetch, in bytes
 	 * @return {Promise} A promise that is resolved with the contents of the file
 	 */
-	this.getContentsAsync = Zotero.Promise.coroutine(function* (source, charset, maxLength) {
+	this.getContentsAsync = async function (source, charset, maxLength) {
 		Zotero.debug("Getting contents of "
 			+ (source instanceof Components.interfaces.nsIFile
 				? source.path
@@ -245,7 +244,6 @@ Zotero.File = new function () {
 							// The stream is closed automatically when end-of-file is reached,
 							// so this throws for empty files
 							if (e.name == "NS_BASE_STREAM_CLOSED") {
-								Zotero.debug("RESOLVING2");
 								deferred.resolve("");
 							}
 							deferred.reject(e);
@@ -263,7 +261,10 @@ Zotero.File = new function () {
 						deferred.resolve(NetUtil.readInputStreamToString(
 							inputStream,
 							bytesToFetch,
-							options
+							{
+								charset,
+								replacement: this.REPLACEMENT_CHARACTER
+							}
 						));
 					}
 					catch (e) {
@@ -291,14 +292,9 @@ Zotero.File = new function () {
 		else {
 			throw new Error(`Unsupported type '${typeof source}' for source`);
 		}
-		var options = {
-			encoding: charset ? charset : "utf-8"
-		};
-		if (maxLength) {
-			options.bytes = maxLength;
-		}
-		return OS.File.read(source, options);
-	});
+		var arr = await IOUtils.read(source, { maxBytes: maxLength || undefined });
+		return new TextDecoder(charset || 'utf-8').decode(arr)
+	};
 	
 	
 	/**
@@ -315,7 +311,7 @@ Zotero.File = new function () {
 		if (source instanceof Components.interfaces.nsIFile) {
 			source = source.path;
 		}
-		else if (source.startsWith('^file:')) {
+		else if (source.startsWith('file:')) {
 			source = OS.Path.fromFileURI(source);
 		}
 		var options = {};
@@ -459,8 +455,10 @@ Zotero.File = new function () {
 		}
 		
 		var deferred = Zotero.Promise.defer();
-		const uri_ = NetUtil.ioService.newURI(uri);
-		const inputChannel = NetUtil.ioService.newChannelFromURI(uri_);
+		const inputChannel = NetUtil.newChannel({
+			uri,
+			loadUsingSystemPrincipal: true
+		});
 		const outputChannel = FileUtils.openSafeFileOutputStream(new FileUtils.File(path));
 		const pipe = Cc["@mozilla.org/pipe;1"].createInstance(Ci.nsIPipe);
 		pipe.init(true, true, 0, 0xffffffff, null);
@@ -474,7 +472,6 @@ Zotero.File = new function () {
 				// NOTE: This noop callback is required, do not remove.
 			},
 			onStopRequest(request, status) {
-				const responseStatus = 'responseStatus' in request ? request.responseStatus : null;
 				pipe.outputStream.close();
 
 				if (!Components.isSuccessCode(status)) {
@@ -490,11 +487,14 @@ Zotero.File = new function () {
 					return;
 				}
 
-				if (isHTTP && responseStatus != 200) {
-					let msg = `Download failed with response code ${responseStatus}`;
-					Zotero.logError(msg);
-					deferred.reject(new Error(msg));
-					return;
+				if (isHTTP) {
+					let statusCode = request.QueryInterface(Ci.nsIHttpChannel).responseStatus;
+					if (statusCode != 200) {
+						let msg = `Download failed with response code ${responseStatus}`;
+						Zotero.logError(msg);
+						deferred.reject(new Error(msg));
+						return;
+					}
 				}
 			}
 		});
@@ -831,13 +831,18 @@ Zotero.File = new function () {
 		}
 		
 		var buf = await OS.File.read(file, {});
-		var bytes = new Uint8Array(buf);
-		var binary = '';
-		var len = bytes.byteLength;
-		for (let i = 0; i < len; i++) {
-			binary += String.fromCharCode(bytes[i]);
-		}
-		return 'data:' + contentType + ';base64,' + btoa(binary);
+		buf = new Uint8Array(buf).buffer;
+		return new Promise((resolve, reject) => {
+			let blob = new Blob([buf], { type: contentType });
+			let reader = new FileReader();
+			reader.onloadend = function () {
+				resolve(reader.result);
+			}
+			reader.onerror = function (e) {
+				reject("FileReader error: " + e);
+			};
+			reader.readAsDataURL(blob);
+		});
 	};
 	
 	
@@ -993,6 +998,10 @@ Zotero.File = new function () {
 	this.copyToUnique = function (file, newFile) {
 		file = this.pathToFile(file);
 		newFile = this.pathToFile(newFile);
+		
+		if (file.contains(newFile)) {
+			throw new Error("Can't copy file into itself");
+		}
 		
 		newFile.createUnique(Components.interfaces.nsIFile.NORMAL_FILE_TYPE, 0o644);
 		var newName = newFile.leafName;
@@ -1262,6 +1271,8 @@ Zotero.File = new function () {
 			// Normalize to NFC
 			fileName = fileName.normalize();
 		}
+		// Replace bidi isolation control characters
+		fileName = fileName.replace(/[\u2068\u2069]/g, '');
 		// Don't allow hidden files
 		fileName = fileName.replace(/^\./, '');
 		// Don't allow blank or illegal filenames
@@ -1326,91 +1337,6 @@ Zotero.File = new function () {
 		}
 		
 		return name + ext;
-	}
-	
-	/*
-	 * Not implemented, but it'd sure be great if it were
-	 */
-	function getCharsetFromByteArray(arr) {
-		
-	}
-	
-	
-	/*
-	 * An extraordinarily inelegant way of getting the character set of a
-	 * text file using a hidden browser
-	 *
-	 * I'm quite sure there's a better way
-	 *
-	 * Note: This is for text files -- don't run on other files
-	 *
-	 * 'callback' is the function to pass the charset (and, if provided, 'args')
-	 * to after detection is complete
-	 */
-	function getCharsetFromFile(file, mimeType, callback, args){
-		if (!file || !file.exists()){
-			callback(false, args);
-			return;
-		}
-		
-		if (mimeType.substr(0, 5) != 'text/' ||
-				!Zotero.MIME.hasInternalHandler(mimeType, this.getExtension(file))) {
-			callback(false, args);
-			return;
-		}
-		
-		var browser = Zotero.Browser.createHiddenBrowser();
-		
-		var url = Components.classes["@mozilla.org/network/protocol;1?name=file"]
-				.getService(Components.interfaces.nsIFileProtocolHandler)
-				.getURLSpecFromFile(file);
-		
-		this.addCharsetListener(browser, function (charset, args) {
-			callback(charset, args);
-			Zotero.Browser.deleteHiddenBrowser(browser);
-		}, args);
-		
-		browser.loadURI(url);
-	}
-	
-	
-	/*
-	 * Attach a load listener to a browser object to perform charset detection
-	 *
-	 * We make sure the universal character set detector is set to the
-	 * universal_charset_detector (temporarily changing it if not--shhhh)
-	 *
-	 * 'callback' is the function to pass the charset (and, if provided, 'args')
-	 * to after detection is complete
-	 */
-	function addCharsetListener(browser, callback, args){
-		var prefService = Components.classes["@mozilla.org/preferences-service;1"]
-							.getService(Components.interfaces.nsIPrefBranch);
-		var oldPref = prefService.getCharPref('intl.charset.detector');
-		var newPref = 'universal_charset_detector';
-		//Zotero.debug("Default character detector is " + (oldPref ? oldPref : '(none)'));
-		
-		if (oldPref != newPref){
-			//Zotero.debug('Setting character detector to universal_charset_detector');
-			prefService.setCharPref('intl.charset.detector', 'universal_charset_detector');
-		}
-		
-		var onpageshow = function(){
-			// ignore spurious about:blank loads
-			if(browser.contentDocument.location.href == "about:blank") return;
-
-			browser.removeEventListener("pageshow", onpageshow, false);
-			
-			var charset = browser.contentDocument.characterSet;
-			Zotero.debug("Detected character set '" + charset + "'");
-			
-			//Zotero.debug('Resetting character detector to ' + (oldPref ? oldPref : '(none)'));
-			prefService.setCharPref('intl.charset.detector', oldPref);
-			
-			callback(charset, args);
-		};
-		
-		browser.addEventListener("pageshow", onpageshow, false);
 	}
 	
 	
@@ -1488,8 +1414,14 @@ Zotero.File = new function () {
 		return path.toLowerCase().includes('dropbox')
 			// Google Drive
 			|| path.includes('Google Drive')
+			|| path.includes('GoogleDrive') // https://forums.zotero.org/discussion/109502/
 			// OneDrive
 			|| path.toLowerCase().includes('onedrive')
+			// Baidu
+			|| path.toLowerCase().includes('baidunetdisk')
+			|| path.toLowerCase().includes('baidusyncdisk')
+			// MEGA
+			|| path.includes('MEGA')
 			// pCloud
 			|| path.toLowerCase().includes('pcloud')
 			// iCloud Drive (~/Library/Mobile Documents/com~apple~CloudDocs)

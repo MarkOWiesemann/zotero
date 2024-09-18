@@ -1,4 +1,4 @@
-describe("Zotero.Fulltext", function () {
+describe("Zotero.FullText", function () {
 	var win;
 	
 	before(function* () {
@@ -78,7 +78,6 @@ describe("Zotero.Fulltext", function () {
 				var item = yield Zotero.Attachments.linkFromFile({ file: linkedFile });
 				var storageDir = Zotero.Attachments.getStorageDirectory(item).path;
 				assert.isTrue(yield OS.File.exists(storageDir));
-				assert.isTrue(yield OS.File.exists(OS.Path.join(storageDir, '.zotero-ft-info')));
 				assert.isTrue(yield OS.File.exists(OS.Path.join(storageDir, '.zotero-ft-cache')));
 				assert.isFalse(yield OS.File.exists(OS.Path.join(storageDir, filename)));
 			});
@@ -133,7 +132,9 @@ describe("Zotero.Fulltext", function () {
 			toSync.push({
 				item: pdfAttachment,
 				content: "Zotero [zoh-TAIR-oh] is a free, easy-to-use tool to help you collect, "
-					+ "organize, cite, and share your research sources.\n\n",
+					// pdf-worker handles whitespace differently than pdftotext
+					//+ "organize, cite, and share your research sources.\n\n",
+					+ "organize, cite, and share\nyour research sources.\n\n",
 				indexedChars: 0,
 				indexedPages: 1
 			});
@@ -143,9 +144,10 @@ describe("Zotero.Fulltext", function () {
 			var data = yield Zotero.FullText.getUnsyncedContent(Zotero.Libraries.userLibraryID);
 			assert.lengthOf(data, 3);
 			let contents = toSync.map(x => x.content);
+			
 			for (let d of data) {
+				assert.include(contents, d.content);
 				let pos = contents.indexOf(d.content);
-				assert.isAbove(pos, -1);
 				assert.equal(d.indexedChars, toSync[pos].indexedChars);
 				assert.equal(d.indexedPages, toSync[pos].indexedPages);
 			}

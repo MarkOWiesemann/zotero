@@ -44,11 +44,11 @@ Zotero.ProgressQueueDialog = function (progressQueue) {
 		
 		let win = Services.wm.getMostRecentWindow("navigator:browser");
 		if (win) {
-			_progressWindow = win.openDialog("chrome://zotero/content/progressQueueDialog.xul",
+			_progressWindow = win.openDialog("chrome://zotero/content/progressQueueDialog.xhtml",
 				"", "chrome,close=yes,resizable=yes,dependent,dialog,centerscreen", _io);
 		}
 		else {
-			_progressWindow = Services.ww.openWindow(null, "chrome://zotero/content/progressQueueDialog.xul",
+			_progressWindow = Services.ww.openWindow(null, "chrome://zotero/content/progressQueueDialog.xhtml",
 				"", "chrome,close=yes,resizable=yes,dependent,dialog,centerscreen", _io);
 		}
 		
@@ -133,7 +133,12 @@ Zotero.ProgressQueueDialog = function (progressQueue) {
 		if (!_progressWindow) return;
 		let total = _progressQueue.getTotal();
 		let processed = _progressQueue.getProcessedTotal();
-		_progressIndicator.value = processed * 100 / total;
+		if (total === 0) {
+			_progressIndicator.value = 0;
+		}
+		else {
+			_progressIndicator.value = processed * 100 / total;
+		}
 		if (processed === total) {
 			_progressWindow.document.getElementById("cancel-button").hidden = true;
 			_progressWindow.document.getElementById("minimize-button").hidden = true;

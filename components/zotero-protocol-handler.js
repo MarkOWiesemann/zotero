@@ -33,9 +33,9 @@ const ZOTERO_PROTOCOL_CONTRACTID = "@mozilla.org/network/protocol;1?name=" + ZOT
 const ZOTERO_PROTOCOL_NAME = "Zotero Chrome Extension Protocol";
 
 Components.utils.import("resource://gre/modules/Services.jsm");
-Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
-Components.utils.import("resource://gre/modules/NetUtil.jsm");
+Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
 Components.utils.import("resource://gre/modules/osfile.jsm")
+const { NetUtil } = ChromeUtils.import("resource://gre/modules/NetUtil.jsm");
 
 const Cc = Components.classes;
 const Ci = Components.interfaces;
@@ -57,14 +57,18 @@ function ZoteroProtocolHandler() {
 	
 	
 	/**
-	 * zotero://attachment/library/[itemKey]
-	 * zotero://attachment/groups/[groupID]/[itemKey]
+	 * zotero://attachment/library/items/[itemKey]
+	 * zotero://attachment/groups/[groupID]/items/[itemKey]
+	 *
+	 * And for snapshot attachments only:
+	 * zotero://attachment/library/items/[itemKey]/[resourcePath]
+	 * zotero://attachment/groups/[groupID]/items/[itemKey]/[resourcePath]
 	 */
 	var AttachmentExtension = {
 		loadAsChrome: false,
 		
-		newChannel: function (uri) {
-			return new AsyncChannel(uri, function* () {
+		newChannel: function (uri, loadInfo) {
+			return new AsyncChannel(uri, loadInfo, function* () {
 				try {
 					var uriPath = uri.pathQueryRef;
 					if (!uriPath) {
@@ -100,6 +104,26 @@ function ZoteroProtocolHandler() {
 						return this._errorChannel(`${path} not found`);
 					}
 					
+					var resourcePathParts = uriPath.split('/')
+						.slice(params.groupID !== undefined ? 4 : 3)
+						.filter(Boolean);
+					if (resourcePathParts.length) {
+						if (!item.isSnapshotAttachment()) {
+							return this._errorChannel(`Item for ${uriPath} is not a snapshot attachment -- cannot access resources`);
+						}
+						
+						try {
+							path = PathUtils.join(PathUtils.parent(path), ...resourcePathParts);
+						}
+						catch (e) {
+							Zotero.logError(e);
+							return this._errorChannel(`Resource ${resourcePathParts.join('/')} not found`);
+						}
+						if (!(yield IOUtils.exists(path))) {
+							return this._errorChannel(`Resource ${resourcePathParts.join('/')} not found`);
+						}
+					}
+					
 					// Set originalURI so that it seems like we're serving from zotero:// protocol.
 					// This is necessary to allow url() links to work from within CSS files.
 					// Otherwise they try to link to files on the file:// protocol, which isn't allowed.
@@ -131,11 +155,11 @@ function ZoteroProtocolHandler() {
 	var DataExtension = {
 		loadAsChrome: false,
 		
-		newChannel: function (uri) {
-			return new AsyncChannel(uri, function* () {
+		newChannel: function (uri, loadInfo) {
+			return new AsyncChannel(uri, loadInfo, function* () {
 				this.contentType = 'text/plain';
 				
-				path = uri.spec.match(/zotero:\/\/[^/]+(.*)/)[1];
+				var path = uri.spec.match(/zotero:\/\/[^/]+(.*)/)[1];
 				
 				try {
 					return Zotero.Utilities.Internal.getAsyncInputStream(
@@ -156,10 +180,10 @@ function ZoteroProtocolHandler() {
 	 * Report generation extension for Zotero protocol
 	 */
 	var ReportExtension = {
-		loadAsChrome: false,
+		loadAsChrome: true,
 		
-		newChannel: function (uri) {
-			return new AsyncChannel(uri, function* () {
+		newChannel: function (uri, loadInfo) {
+			return new AsyncChannel(uri, loadInfo, function* () {
 				var userLibraryID = Zotero.Libraries.userLibraryID;
 				
 				var path = uri.pathQueryRef;
@@ -539,8 +563,8 @@ function ZoteroProtocolHandler() {
 	var TimelineExtension = {
 		loadAsChrome: true,
 		
-		newChannel: function (uri) {
-			return new AsyncChannel(uri, function* () {
+		newChannel: function (uri, loadInfo) {
+			return new AsyncChannel(uri, loadInfo, function* () {
 				var userLibraryID = Zotero.Libraries.userLibraryID;
 				
 				var path = uri.spec.match(/zotero:\/\/[^/]+(.*)/)[1];
@@ -929,8 +953,8 @@ function ZoteroProtocolHandler() {
 	var DebugExtension = {
 		loadAsChrome: false,
 		
-		newChannel: function (uri) {
-			return new AsyncChannel(uri, function* () {
+		newChannel: function (uri, loadInfo) {
+			return new AsyncChannel(uri, loadInfo, function* () {
 				this.contentType = "text/plain";
 				
 				try {
@@ -971,11 +995,11 @@ function ZoteroProtocolHandler() {
 	ConnectorChannel.prototype.__defineGetter__("originalURI", function() { return this.URI });
 	ConnectorChannel.prototype.__defineSetter__("originalURI", function() { });
 	
-	ConnectorChannel.prototype.asyncOpen = function(streamListener, context) {
+	ConnectorChannel.prototype.asyncOpen = function(streamListener) {
 		if(this.loadGroup) this.loadGroup.addRequest(this, null);
-		streamListener.onStartRequest(this, context);
-		streamListener.onDataAvailable(this, context, this._stream, 0, this.contentLength);
-		streamListener.onStopRequest(this, context, this.status);
+		streamListener.onStartRequest(this);
+		streamListener.onDataAvailable(this, this._stream, 0, this.contentLength);
+		streamListener.onStopRequest(this, this.status);
 		this._isPending = false;
 		if(this.loadGroup) this.loadGroup.removeRequest(this, null, 0);
 	}
@@ -1225,21 +1249,29 @@ function ZoteroProtocolHandler() {
  * Implements nsIProtocolHandler
  */
 ZoteroProtocolHandler.prototype = {
-	scheme: ZOTERO_SCHEME,
-	
-	defaultPort : -1,
-	
-	protocolFlags :
-		Components.interfaces.nsIProtocolHandler.URI_NORELATIVE |
+	get scheme() {
+		return ZOTERO_SCHEME;
+	},
+	get protocolFlags() {
+		/*Components.interfaces.nsIProtocolHandler.URI_NORELATIVE |
 		Components.interfaces.nsIProtocolHandler.URI_NOAUTH |
 		// DEBUG: This should be URI_IS_LOCAL_FILE, and MUST be if any
 		// extensions that modify data are added
 		//  - https://www.zotero.org/trac/ticket/1156
 		//
 		Components.interfaces.nsIProtocolHandler.URI_IS_LOCAL_FILE,
-		//Components.interfaces.nsIProtocolHandler.URI_LOADABLE_BY_ANYONE,
+		//Components.interfaces.nsIProtocolHandler.URI_LOADABLE_BY_ANYONE,*/
 		
-	allowPort : function(port, scheme) {
+		return Ci.nsIProtocolHandler.URI_NORELATIVE
+			| Ci.nsIProtocolHandler.URI_IS_LOCAL_RESOURCE
+			// URI_IS_UI_RESOURCE: more secure than URI_LOADABLE_BY_ANYONE, less secure than URI_DANGEROUS_TO_LOAD
+			// This is the security level used by the chrome:// protocol
+			| Ci.nsIProtocolHandler.URI_IS_UI_RESOURCE;
+	},
+	get defaultPort() {
+		return -1;
+	},
+	allowPort: function allowPort() {
 		return false;
 	},
 	
@@ -1276,45 +1308,30 @@ ZoteroProtocolHandler.prototype = {
 			.finalize();
 	},
 	
-	newChannel : function(uri) {
-		var chromeService = Components.classes["@mozilla.org/network/protocol;1?name=chrome"]
-			.getService(Components.interfaces.nsIProtocolHandler);
-		
-		var newChannel = null;
-		
+	newChannel: function (uri, loadInfo) {
 		try {
 			let ext = this.getExtension(uri);
 			
+			// Return cancelled channel for unknown paths
 			if (!ext) {
-				// Return cancelled channel for unknown paths
-				//
-				// These can be in the form zotero://example.com/... -- maybe for "//example.com" URLs?
-				var chromeURI = chromeService.newURI(DUMMY_CHROME_URL, null, null);
-				var extChannel = chromeService.newChannel(chromeURI);
-				var chromeRequest = extChannel.QueryInterface(Components.interfaces.nsIRequest);
-				chromeRequest.cancel(0x804b0002); // BINDING_ABORTED
-				return extChannel;
+				return this._getCancelledChannel();
 			}
 			
-			if (!this._principal && ext.loadAsChrome) {
-				this._principal = Services.scriptSecurityManager.getSystemPrincipal();
-			}
-			
-			var extChannel = ext.newChannel(uri);
+			var extChannel = ext.newChannel(uri, loadInfo);
 			// Extension returned null, so cancel request
 			if (!extChannel) {
-				var chromeURI = chromeService.newURI(DUMMY_CHROME_URL, null, null);
-				var extChannel = chromeService.newChannel(chromeURI);
-				var chromeRequest = extChannel.QueryInterface(Components.interfaces.nsIRequest);
-				chromeRequest.cancel(0x804b0002); // BINDING_ABORTED
+				return this._getCancelledChannel();
 			}
 			
 			// Apply cached principal to extension channel
-			if (this._principal) {
+			if (ext.loadAsChrome) {
+				if (!this._principal) {
+					this._principal = Services.scriptSecurityManager.getSystemPrincipal();
+				}
 				extChannel.owner = this._principal;
 			}
 			
-			if(!extChannel.originalURI) extChannel.originalURI = uri;
+			//if(!extChannel.originalURI) extChannel.originalURI = uri;
 			
 			return extChannel;
 		}
@@ -1324,14 +1341,24 @@ ZoteroProtocolHandler.prototype = {
 			throw Components.results.NS_ERROR_FAILURE;
 		}
 		
-		return newChannel;
+		return null;
+	},
+	
+	_getCancelledChannel: function () {
+		var channel = NetUtil.newChannel({
+			uri: DUMMY_CHROME_URL,
+			loadUsingSystemPrincipal: true,
+		})
+		var req = channel.QueryInterface(Components.interfaces.nsIRequest);
+		req.cancel(0x804b0002); // BINDING_ABORTED
+		return channel;
 	},
 	
 	contractID: ZOTERO_PROTOCOL_CONTRACTID,
 	classDescription: ZOTERO_PROTOCOL_NAME,
 	classID: ZOTERO_PROTOCOL_CID,
-	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
-	                                       Components.interfaces.nsIProtocolHandler])
+	//QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsIProtocolHandler])
+	QueryInterface: ChromeUtils.generateQI([Ci.nsISupportsWeakReference, Ci.nsIProtocolHandler]),
 };
 
 
@@ -1339,7 +1366,10 @@ ZoteroProtocolHandler.prototype = {
  * nsIChannel implementation that takes a promise-yielding generator that returns a
  * string, nsIAsyncInputStream, or file
  */
-function AsyncChannel(uri, gen) {
+function AsyncChannel(uri, loadInfo, gen) {
+	this.URI = this.originalURI = uri;
+	this.loadInfo = loadInfo;
+	
 	this._generator = gen;
 	this._isPending = true;
 	
@@ -1356,12 +1386,13 @@ function AsyncChannel(uri, gen) {
 	this.URI = uri;
 	this.originalURI = uri;
 	this.owner = null;
+	
 	this.notificationCallbacks = null;
 	this.securityInfo = null;
 }
 
 AsyncChannel.prototype = {
-	asyncOpen: Zotero.Promise.coroutine(function* (streamListener, context) {
+	asyncOpen: Zotero.Promise.coroutine(function* (streamListener) {
 		if (this.loadGroup) this.loadGroup.addRequest(this, null);
 		
 		var channel = this;
@@ -1374,19 +1405,24 @@ AsyncChannel.prototype = {
 		});
 		
 		var listenerWrapper = {
-			onStartRequest: function (request, context) {
+			onStartRequest: function (request) {
 				//Zotero.debug("Starting request");
-				streamListener.onStartRequest(channel, context);
+				streamListener.onStartRequest(channel);
 			},
-			onDataAvailable: function (request, context, inputStream, offset, count) {
+			onDataAvailable: function (request, inputStream, offset, count) {
 				//Zotero.debug("onDataAvailable");
-				streamListener.onDataAvailable(channel, context, inputStream, offset, count);
+				try {
+					streamListener.onDataAvailable(channel, inputStream, offset, count);
+				}
+				catch (e) {
+					channel.cancel(e.result);
+				}
 			},
-			onStopRequest: function (request, context, status) {
+			onStopRequest: function (request, status) {
 				//Zotero.debug("Stopping request");
-				streamListener.onStopRequest(channel, context, status);
+				streamListener.onStopRequest(channel, status);
 				channel._isPending = false;
-				if (status == 0) {
+				if (status === Cr.NS_OK) {
 					resolve();
 				}
 				else {
@@ -1406,15 +1442,15 @@ AsyncChannel.prototype = {
 			if (typeof data == 'string') {
 				//Zotero.debug("AsyncChannel: Got string from generator");
 				
-				listenerWrapper.onStartRequest(this, context);
+				listenerWrapper.onStartRequest(this);
 				
 				let converter = Components.classes["@mozilla.org/intl/scriptableunicodeconverter"]
 					.createInstance(Components.interfaces.nsIScriptableUnicodeConverter);
 				converter.charset = "UTF-8";
 				let inputStream = converter.convertToInputStream(data);
-				listenerWrapper.onDataAvailable(this, context, inputStream, 0, inputStream.available());
+				listenerWrapper.onDataAvailable(this, inputStream, 0, inputStream.available());
 				
-				listenerWrapper.onStopRequest(this, context, this.status);
+				listenerWrapper.onStopRequest(this, this.status);
 			}
 			// If an async input stream is given, pass the data asynchronously to the stream listener
 			else if (data instanceof Ci.nsIAsyncInputStream) {
@@ -1427,7 +1463,7 @@ AsyncChannel.prototype = {
 				catch (e) {
 					pump.init(data, -1, -1, 0, 0, true);
 				}
-				pump.asyncRead(listenerWrapper, context);
+				pump.asyncRead(listenerWrapper, null);
 			}
 			else if (data instanceof Ci.nsIFile || data instanceof Ci.nsIURI) {
 				if (data instanceof Ci.nsIFile) {
@@ -1442,7 +1478,7 @@ AsyncChannel.prototype = {
 				uri.QueryInterface(Ci.nsIURL);
 				this.contentType = Zotero.MIME.getMIMETypeFromExtension(uri.fileExtension);
 				if (!this.contentType) {
-					let sample = yield Zotero.File.getSample(data);
+					let sample = yield Zotero.File.getSample(uri.spec);
 					this.contentType = Zotero.MIME.getMIMETypeFromData(sample);
 				}
 				
@@ -1453,14 +1489,14 @@ AsyncChannel.prototype = {
 						return;
 					}
 					
-					listenerWrapper.onStartRequest(channel, context);
+					listenerWrapper.onStartRequest(channel);
 					try {
-						listenerWrapper.onDataAvailable(channel, context, inputStream, 0, inputStream.available());
+						listenerWrapper.onDataAvailable(channel, inputStream, 0, inputStream.available());
 					}
 					catch (e) {
 						reject(e);
 					}
-					listenerWrapper.onStopRequest(channel, context, status);
+					listenerWrapper.onStopRequest(channel, status);
 				});
 			}
 			else if (data === undefined) {
@@ -1479,12 +1515,15 @@ AsyncChannel.prototype = {
 		} catch (e) {
 			Zotero.debug(e, 1);
 			if (channel._isPending) {
-				streamListener.onStopRequest(channel, context, Components.results.NS_ERROR_FAILURE);
+				streamListener.onStopRequest(channel, Components.results.NS_ERROR_FAILURE);
 				channel._isPending = false;
 			}
 			throw e;
 		} finally {
-			if (channel.loadGroup) channel.loadGroup.removeRequest(channel, null, 0);
+			try {
+				if (channel.loadGroup) channel.loadGroup.removeRequest(channel, null, 0);
+			}
+			catch (e) {}
 		}
 	}),
 	
@@ -1508,27 +1547,19 @@ AsyncChannel.prototype = {
 	},
 	
 	// nsIWritablePropertyBag
-	setProperty: function (prop, val) {
+	/*setProperty: function (prop, val) {
 		this[prop] = val;
 	},
 	
 	
 	deleteProperty: function (prop) {
 		delete this[prop];
-	},
+	},*/
 	
-	
-	QueryInterface: function (iid) {
-		if (iid.equals(Components.interfaces.nsISupports)
-				|| iid.equals(Components.interfaces.nsIRequest)
-				|| iid.equals(Components.interfaces.nsIChannel)
-				// pdf.js wants this
-				|| iid.equals(Components.interfaces.nsIWritablePropertyBag)) {
-			return this;
-		}
-		throw Components.results.NS_ERROR_NO_INTERFACE;
-	}
+	QueryInterface: ChromeUtils.generateQI([Ci.nsIChannel, Ci.nsIRequest]),
+				/*pdf.js wants this
+				|| iid.equals(Components.interfaces.nsIWritablePropertyBag)) {*/
 };
 
 
-var NSGetFactory = XPCOMUtils.generateNSGetFactory([ZoteroProtocolHandler]);
+var NSGetFactory = ComponentUtils.generateNSGetFactory([ZoteroProtocolHandler]);

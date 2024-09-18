@@ -1,14 +1,15 @@
 describe("Zotero.Attachments", function() {
-	var win;
+	var HiddenBrowser;
+	var browser;
 	
-	before(function* () {
-		// Hidden browser, which requires a browser window, needed for charset detection
-		// (until we figure out a better way)
-		win = yield loadBrowserWindow();
+	before(function () {
+		HiddenBrowser = ChromeUtils.import("chrome://zotero/content/HiddenBrowser.jsm").HiddenBrowser;
 	});
-	after(function () {
-		if (win) {
-			win.close();
+	
+	afterEach(function () {
+		if (browser) {
+			HiddenBrowser.destroy(browser);
+			browser = null;
 		}
 	});
 	
@@ -259,8 +260,7 @@ describe("Zotero.Attachments", function() {
 			assert.propertyVal(matches[0], 'id', attachment.id);
 		});
 		
-		// This isn't particularly the behavior we want, but it documents the expected behavior
-		it("shouldn't index JavaScript-created text in an HTML file when the charset isn't known in advance", async function () {
+		it("should index JavaScript-created text in an HTML file", async function () {
 			var item = await createDataObject('item');
 			var file = getTestDataDirectory();
 			file.append('test-js.html');
@@ -275,7 +275,8 @@ describe("Zotero.Attachments", function() {
 			assert.equal(attachment.attachmentCharset, 'utf-8');
 			
 			var matches = await Zotero.Fulltext.findTextInItems([attachment.id], 'test');
-			assert.lengthOf(matches, 0);
+			assert.lengthOf(matches, 1);
+			assert.propertyVal(matches[0], 'id', attachment.id);
 		});
 	});
 	
@@ -305,15 +306,12 @@ describe("Zotero.Attachments", function() {
 			var item = yield createDataObject('item');
 			
 			var uri = OS.Path.join(getTestDataDirectory().path, "snapshot", "index.html");
-			var deferred = Zotero.Promise.defer();
-			win.addEventListener('pageshow', () => deferred.resolve());
-			win.loadURI(uri);
-			yield deferred.promise;
+			browser = yield HiddenBrowser.create(uri);
 			
 			var file = getTestDataDirectory();
 			file.append('test.png');
 			var attachment = yield Zotero.Attachments.linkFromDocument({
-				document: win.content.document,
+				document: yield HiddenBrowser.getDocument(browser),
 				parentItemID: item.id
 			});
 			
@@ -328,22 +326,20 @@ describe("Zotero.Attachments", function() {
 	
 	describe("#importFromDocument()", function () {
 		Components.utils.import("resource://gre/modules/FileUtils.jsm");
-		Components.utils.import("resource://zotero-unit/httpd.js");
+		
 		var testServerPath, httpd, prefix;
-		var testServerPort = 16213;
+		var testServerPort;
 
 		before(async function () {
 			this.timeout(20000);
 			Zotero.Prefs.set("httpServer.enabled", true);
 		});
 
-		beforeEach(function () {
-			prefix = Zotero.Utilities.randomString();
-			// Alternate ports to prevent exceptions not catchable in JS
+		beforeEach(async function () {
 			// Use random prefix because httpd does not actually stop between tests
+			prefix = Zotero.Utilities.randomString();
+			({ httpd, port: testServerPort } = await startHTTPServer());
 			testServerPath = 'http://127.0.0.1:' + testServerPort + '/' + prefix;
-			httpd = new HttpServer();
-			httpd.start(testServerPort);
 		});
 
 		afterEach(async function () {
@@ -358,13 +354,10 @@ describe("Zotero.Attachments", function() {
 			var uri = OS.Path.join(getTestDataDirectory().path, "snapshot");
 			httpd.registerDirectory("/" + prefix + "/", new FileUtils.File(uri));
 			
-			var deferred = Zotero.Promise.defer();
-			win.addEventListener('pageshow', () => deferred.resolve());
-			win.loadURI(testServerPath + "/index.html");
-			await deferred.promise;
-			
+			browser = await HiddenBrowser.create(testServerPath + "/index.html");
+			Zotero.FullText.indexNextInTest();
 			var attachment = await Zotero.Attachments.importFromDocument({
-				document: win.content.document,
+				browser,
 				parentItemID: item.id
 			});
 			
@@ -408,13 +401,9 @@ describe("Zotero.Attachments", function() {
 				}
 			);
 
-			var deferred = Zotero.Promise.defer();
-			win.addEventListener('pageshow', () => deferred.resolve());
-			win.loadURI(testServerPath + "/index.html");
-			await deferred.promise;
-
+			browser = await HiddenBrowser.create(testServerPath + "/index.html");
 			var attachment = await Zotero.Attachments.importFromDocument({
-				document: win.content.document,
+				browser,
 				parentItemID: item.id
 			});
 
@@ -459,13 +448,9 @@ describe("Zotero.Attachments", function() {
 				}
 			);
 
-			var deferred = Zotero.Promise.defer();
-			win.addEventListener('pageshow', () => deferred.resolve());
-			win.loadURI(testServerPath + "/index.html");
-			await deferred.promise;
-
+			browser = await HiddenBrowser.create(testServerPath + "/index.html");
 			var attachment = await Zotero.Attachments.importFromDocument({
-				document: win.content.document,
+				browser,
 				parentItemID: item.id
 			});
 
@@ -509,13 +494,9 @@ describe("Zotero.Attachments", function() {
 				}
 			);
 
-			let deferred = Zotero.Promise.defer();
-			win.addEventListener('pageshow', () => deferred.resolve());
-			win.loadURI(testServerPath + "/index.html");
-			await deferred.promise;
-
+			browser = await HiddenBrowser.create(testServerPath + "/index.html");
 			let attachment = await Zotero.Attachments.importFromDocument({
-				document: win.content.document,
+				browser,
 				parentItemID: item.id
 			});
 
@@ -546,6 +527,7 @@ describe("Zotero.Attachments", function() {
 			
 			let snapshotContent = await Zotero.File.getContentsAsync(content);
 			
+			Zotero.FullText.indexNextInTest();
 			let attachment = await Zotero.Attachments.importFromSnapshotContent({
 				parentItemID: item.id,
 				url: "https://example.com/test.html",
@@ -593,7 +575,6 @@ describe("Zotero.Attachments", function() {
 		var pageURL9 = 'http://website/article9';
 		var pageURL10 = 'http://website/refresh';
 		
-		Components.utils.import("resource://zotero-unit/httpd.js");
 		var httpd;
 		var port = 16213;
 		var baseURL = `http://localhost:${port}/`;
@@ -828,8 +809,7 @@ describe("Zotero.Attachments", function() {
 		});
 		
 		beforeEach(async function () {
-			httpd = new HttpServer();
-			httpd.start(port);
+			({ httpd } = await startHTTPServer(port));
 			httpd.registerFile(
 				pdfURL.substr(baseURL.length - 1),
 				Zotero.File.pathToFile(OS.Path.join(getTestDataDirectory().path, 'test.pdf'))
@@ -882,7 +862,7 @@ describe("Zotero.Attachments", function() {
 			await item.saveTx();
 			var attachment = await Zotero.Attachments.addAvailablePDF(item);
 			
-			assert.isTrue(requestStub.calledTwice);
+			assert.equal(requestStub.callCount, 2);
 			assert.isTrue(requestStub.getCall(0).calledWith('GET', 'https://doi.org/' + doi));
 			assert.ok(attachment);
 			var json = attachment.toJSON();
@@ -900,7 +880,7 @@ describe("Zotero.Attachments", function() {
 			await item.saveTx();
 			var attachment = await Zotero.Attachments.addAvailablePDF(item);
 			
-			assert.isTrue(requestStub.calledOnce);
+			assert.equal(requestStub.callCount, 1);
 			assert.isTrue(requestStub.calledWith('GET', 'https://doi.org/' + doi));
 			assert.ok(attachment);
 			var json = attachment.toJSON();
@@ -918,7 +898,7 @@ describe("Zotero.Attachments", function() {
 			await item.saveTx();
 			var attachment = await Zotero.Attachments.addAvailablePDF(item);
 			
-			assert.isTrue(requestStub.calledTwice);
+			assert.equal(requestStub.callCount, 2);
 			assert.isTrue(requestStub.getCall(0).calledWith('GET', 'https://doi.org/' + doi));
 			assert.ok(attachment);
 			var json = attachment.toJSON();
@@ -936,7 +916,7 @@ describe("Zotero.Attachments", function() {
 			await item.saveTx();
 			var attachment = await Zotero.Attachments.addAvailablePDF(item);
 			
-			assert.isTrue(requestStub.calledOnce);
+			assert.equal(requestStub.callCount, 1);
 			assert.isTrue(requestStub.calledWith('GET', url));
 			assert.ok(attachment);
 			var json = attachment.toJSON();
@@ -954,7 +934,7 @@ describe("Zotero.Attachments", function() {
 			await item.saveTx();
 			var attachment = await Zotero.Attachments.addAvailablePDF(item);
 			
-			assert.isTrue(requestStub.calledThrice);
+			assert.equal(requestStub.callCount, 3);
 			var call1 = requestStub.getCall(0);
 			assert.isTrue(call1.calledWith('GET', 'https://doi.org/' + doi));
 			var call2 = requestStub.getCall(1);
@@ -1034,7 +1014,7 @@ describe("Zotero.Attachments", function() {
 			
 			var attachments = await Zotero.Attachments.addAvailablePDFs([item1, item2]);
 			
-			assert.isTrue(requestStub.calledTwice);
+			assert.equal(requestStub.callCount, 2);
 			assert.isAbove(requestStubCallTimes[1] - requestStubCallTimes[0], 998);
 			// Make sure both items have attachments
 			assert.equal(item1.numAttachments(), 1);
@@ -1099,7 +1079,7 @@ describe("Zotero.Attachments", function() {
 			
 			var attachments = await Zotero.Attachments.addAvailablePDFs([item1, item2]);
 			
-			assert.isTrue(requestStub.calledThrice);
+			assert.equal(requestStub.callCount, 3);
 			assert.equal(requestStub.getCall(0).args[1], pageURL9);
 			assert.equal(requestStub.getCall(1).args[1], pageURL9);
 			assert.equal(requestStub.getCall(2).args[1], pageURL3);
@@ -1117,7 +1097,7 @@ describe("Zotero.Attachments", function() {
 			await item.saveTx();
 			var attachment = await Zotero.Attachments.addAvailablePDF(item);
 			
-			assert.isTrue(requestStub.calledTwice);
+			assert.equal(requestStub.callCount, 2);
 			assert.equal(requestStub.getCall(0).args[1], pageURL10)
 			assert.equal(requestStub.getCall(1).args[1], pageURL1)
 			assert.ok(attachment);
@@ -1301,10 +1281,303 @@ describe("Zotero.Attachments", function() {
 	});
 	
 	describe("#getFileBaseNameFromItem()", function () {
-		it("should strip HTML tags from title", async function () {
-			var item = createUnsavedDataObject('item', { title: 'Foo <i>Bar</i> Foo<br><br/><br />Bar' });
-			var str = Zotero.Attachments.getFileBaseNameFromItem(item);
+		var item, itemManyAuthors, itemPatent, itemIncomplete, itemBookSection;
+
+		before(() => {
+			item = createUnsavedDataObject('item', { title: 'Lorem Ipsum', itemType: 'journalArticle' });
+			item.setCreators([
+				{ firstName: 'Foocius', lastName: 'Barius', creatorType: 'author' },
+				{ firstName: 'Bazius', lastName: 'Pixelus', creatorType: 'author' }
+			]);
+			item.setField('date', "1975-10-15");
+			item.setField('publicationTitle', 'Best Publications Place');
+			item.setField('journalAbbreviation', 'BPP');
+			item.setField('issue', '42');
+			item.setField('pages', '321');
+
+			
+			itemManyAuthors = createUnsavedDataObject('item', { title: 'Has Many Authors', itemType: 'book' });
+			itemManyAuthors.setCreators([
+				{ firstName: 'First', lastName: 'Author', creatorType: 'author' },
+				{ firstName: 'Second', lastName: 'Creator', creatorType: 'author' },
+				{ firstName: 'Third', lastName: 'Person', creatorType: 'author' },
+				{ firstName: 'Final', lastName: 'Writer', creatorType: 'author' },
+				{ firstName: 'Some', lastName: 'Editor1', creatorType: 'editor' },
+				{ firstName: 'Other', lastName: 'ProEditor2', creatorType: 'editor' },
+				{ firstName: 'Last', lastName: 'SuperbEditor3', creatorType: 'editor' },
+			]);
+			itemManyAuthors.setField('date', "2000-01-02");
+			itemManyAuthors.setField('publisher', 'Awesome House');
+			itemManyAuthors.setField('volume', '3');
+
+			itemPatent = createUnsavedDataObject('item', { title: 'Retroencabulator', itemType: 'patent' });
+			itemPatent.setCreators([
+				{ name: 'AcmeCorp', creatorType: 'inventor' },
+				{ firstName: 'Wile', lastName: 'E', creatorType: 'contributor' },
+				{ firstName: 'Road', lastName: 'R', creatorType: 'contributor' },
+			]);
+			itemPatent.setField('date', '1952-05-10');
+			itemPatent.setField('number', 'HBK-8539b');
+			itemPatent.setField('assignee', 'Fast FooBar');
+			itemIncomplete = createUnsavedDataObject('item', { title: 'Incomplete', itemType: 'preprint' });
+			itemBookSection = createUnsavedDataObject('item', { title: 'Book Section', itemType: 'bookSection' });
+			itemBookSection.setField('bookTitle', 'Book Title');
+		});
+
+		
+		it('should strip HTML tags from title', function () {
+			var htmlItem = createUnsavedDataObject('item', { title: 'Foo <i>Bar</i> Foo<br><br/><br />Bar' });
+			var str = Zotero.Attachments.getFileBaseNameFromItem(htmlItem, '{{ title }}');
 			assert.equal(str, 'Foo Bar Foo Bar');
+		});
+
+		it('should accept basic formating options', function () {
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, 'FOO{{year}}BAR'),
+				'FOO1975BAR'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{firstCreator suffix=" - "}}{{year suffix=" - "}}{{title truncate="50" }}'),
+				'Barius and Pixelus - 1975 - Lorem Ipsum'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{year suffix="-"}}{{firstCreator truncate="10" suffix="-"}}{{title truncate="5" }}'),
+				'1975-Barius and-Lorem'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, 'foo {{year}} bar {{year prefix="++" truncate="2" suffix="++"}}'),
+				'foo 1975 bar ++19++'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{firstCreator suffix=" - "}}{{year suffix=" - "}}{{title}}'),
+				'Author et al. - 2000 - Has Many Authors'
+			);
+		});
+
+		it('should offer a range of options for composing creators', function () {
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ authors max="1" }}'),
+				'Barius'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ authors max="1" truncate="3" }}'),
+				'Bar'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ authors max="5" join=" " }}'),
+				'Barius Pixelus'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ authors max="3" join=" " }}'),
+				'Author Creator Person'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemPatent, '{{ authors }}'),
+				'AcmeCorp'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ authors max="2" name="family" initialize="family" join=" " initialize-with="" }}'),
+				'A C'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemPatent, '{{ authors max="2" name="family" initialize="family" initialize-with="" }}'),
+				'A'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ authors max="1" name="full" initialize="full" name-part-separator="" initialize-with="" }}'),
+				'FB'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ authors max="3" name="full" initialize="full" name-part-separator="" join=" " initialize-with="" }}'),
+				'FA SC TP'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ authors max="1" name="family-given" initialize="given" name-part-separator="" initialize-with="" }}'),
+				'BariusF'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ authors max="2" name="family-given" initialize="given" join=" " name-part-separator="" initialize-with="" }}'),
+				'AuthorF CreatorS'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ editors }}test'),
+				'test'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ editors max="1" }}'),
+				'Editor1'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ editors max="5" join=" " }}'),
+				'Editor1 ProEditor2 SuperbEditor3'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ editors max="2" name="family" initialize="family" join=" " initialize-with="" }}'),
+				'E P'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ editors max="1" name="full" initialize="full" name-part-separator="" initialize-with="" }}'),
+				'SE'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ editors max="1" name="family-given" initialize="given" name-part-separator="" initialize-with="" }}'),
+				'Editor1S'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ authors max="3" name="full" initialize="given" }}'),
+				'F. Barius, B. Pixelus'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ creators case="upper" }}'),
+				'BARIUS, PIXELUS'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ authors max="2" }}'),
+				'Author, Creator'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ creators max="3" join=" " name="given" }}'),
+				'First Second Third'
+			);
+		});
+
+		it('should accept case parameter', async function () {
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle case="upper" }}'),
+				'BEST PUBLICATIONS PLACE'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle case="lower" }}'),
+				'best publications place'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle case="title" }}'),
+				'Best Publications Place'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle case="hyphen" }}'),
+				'best-publications-place'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle case="camel" }}'),
+				'bestPublicationsPlace'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle case="snake" }}'),
+				'best_publications_place'
+			);
+		});
+
+		it('should accept itemType or any other field', function () {
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ itemType localize="true" }}'),
+				'Journal Article'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ publicationTitle }}'),
+				'Best Publications Place'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ journalAbbreviation }}'),
+				'BPP'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ publisher }}'),
+				'Awesome House'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, '{{ volume }}'),
+				'3'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ issue }}'),
+				'42'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, '{{ pages }}'),
+				'321'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemPatent, '{{ number }}'),
+				'HBK-8539b'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemPatent, '{{ assignee }}'),
+				'Fast FooBar'
+			);
+		});
+
+		it("should support simple logic in template syntax", function () {
+			const template = '{{ if itemType == "journalArticle" }}j-{{ publicationTitle case="hyphen" }}{{ elseif itemType == "patent" }}p-{{ number case="hyphen" }}{{ else }}o-{{ title case="hyphen" }}{{ endif }}';
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(item, template), 'j-best-publications-place'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemPatent, template), 'p-hbk-8539b'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemManyAuthors, template), 'o-has-many-authors'
+			);
+		});
+
+		it("should skip missing fields", function () {
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemIncomplete, '{{ authors prefix = "a" suffix="-" }}{{ publicationTitle case="hyphen" suffix="-" }}{{ title }}'),
+				'Incomplete'
+			);
+		});
+
+		it("should recognized base-mapped fields", function () {
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemBookSection, '{{ bookTitle case="snake" }}'),
+				'book_title'
+			);
+			assert.equal(
+				Zotero.Attachments.getFileBaseNameFromItem(itemBookSection, '{{ publicationTitle case="snake" }}'),
+				'book_title'
+			);
+		});
+
+		it("should convert old attachmentRenameFormatString to use new attachmentRenameTemplate syntax", function () {
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{%c - }{%y - }{%t{50}}'),
+				'{{ firstCreator suffix=" - " }}{{ year suffix=" - " }}{{ title truncate="50" }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{ - %y - }'),
+				'{{ year prefix=" - " suffix=" - " }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{%y{2}00}'),
+				'{{ year truncate="2" suffix="00" }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{%c5 - }'),
+				'{{ firstCreator suffix="5 - " }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{%c-2 - }'),
+				'{{ firstCreator suffix="-2 - " }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{%t5 - }'),
+				'{{ title suffix="5 - " }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('{++%t{10}--}'),
+				'{{ title truncate="10" prefix="++" suffix="--" }}'
+			);
+			assert.equal(
+				Zotero.Prefs.convertLegacyAttachmentRenameFormatString('foo{%c}-{%t{10}}-{%y{2}00}'),
+				'foo{{ firstCreator }}-{{ title truncate="10" }}-{{ year truncate="2" suffix="00" }}'
+			);
+		});
+
+		it("should strip bidi isolates from firstCreator", async function () {
+			var item = createUnsavedDataObject('item',
+				{ creators: [{ name: 'Foo', creatorType: 'author' }, { name: 'Bar', creatorType: 'author' }] });
+			var str = Zotero.Attachments.getFileBaseNameFromItem(item);
+			assert.equal(str, Zotero.getString('general.andJoiner', ['Foo', 'Bar']) + ' - ');
 		});
 	});
 	

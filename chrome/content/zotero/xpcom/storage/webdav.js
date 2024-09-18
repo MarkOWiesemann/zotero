@@ -84,7 +84,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 		var loginManager = Components.classes["@mozilla.org/login-manager;1"]
 								.getService(Components.interfaces.nsILoginManager);
 		
-		var logins = loginManager.findLogins({}, this._loginManagerHost, null, this._loginManagerRealm);
+		var logins = loginManager.findLogins(this._loginManagerHost, null, this._loginManagerRealm);
 		// Find user from returned array of nsILoginInfo objects
 		for (var i = 0; i < logins.length; i++) {
 			if (logins[i].username == username) {
@@ -93,7 +93,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 		}
 		
 		// Pre-4.0.28.5 format, broken for findLogins and removeLogin in Fx41
-		logins = loginManager.findLogins({}, "chrome://zotero", "", null);
+		logins = loginManager.findLogins("chrome://zotero", "", null);
 		for (var i = 0; i < logins.length; i++) {
 			if (logins[i].username == username
 					&& logins[i].formSubmitURL == "Zotero Storage Server") {
@@ -120,7 +120,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 		
 		var loginManager = Components.classes["@mozilla.org/login-manager;1"]
 								.getService(Components.interfaces.nsILoginManager);
-		var logins = loginManager.findLogins({}, this._loginManagerHost, null, this._loginManagerRealm);
+		var logins = loginManager.findLogins(this._loginManagerHost, null, this._loginManagerRealm);
 		for (var i = 0; i < logins.length; i++) {
 			Zotero.debug('Clearing WebDAV passwords');
 			if (logins[i].httpRealm == this._loginManagerRealm) {
@@ -130,7 +130,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 		}
 		
 		// Pre-4.0.28.5 format, broken for findLogins and removeLogin in Fx41
-		logins = loginManager.findLogins({}, this._loginManagerHost, "", null);
+		logins = loginManager.findLogins(this._loginManagerHost, "", null);
 		for (var i = 0; i < logins.length; i++) {
 			Zotero.debug('Clearing old WebDAV passwords');
 			if (logins[i].formSubmitURL == "Zotero Storage Server") {
@@ -158,14 +158,14 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 		if (!this._rootURI) {
 			this._init();
 		}
-		return this._rootURI.clone();
+		return this._rootURI;
 	},
 	
 	get parentURI() {
 		if (!this._parentURI) {
 			this._init();
 		}
-		return this._parentURI.clone();
+		return this._parentURI;
 	},
 	
 	_init: function () {
@@ -953,7 +953,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 				toPurge,
 				Zotero.DB.MAX_BOUND_PARAMETERS - 1,
 				function (chunk) {
-					return Zotero.DB.executeTransaction(function* () {
+					return Zotero.DB.executeTransaction(async function () {
 						var sql = "DELETE FROM storageDeleteLog WHERE libraryID=? AND key IN ("
 							+ chunk.map(() => '?').join() + ")";
 						return Zotero.DB.queryAsync(sql, [libraryID].concat(chunk));
@@ -1169,8 +1169,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 		}
 		
 		var seconds = false;
-		var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
-			.createInstance(Components.interfaces.nsIDOMParser);
+		var parser = new DOMParser();
 		try {
 			var xml = parser.parseFromString(req.responseText, "text/xml");
 		}
@@ -1399,7 +1398,7 @@ Zotero.Sync.Storage.Mode.WebDAV.prototype = {
 			return 0;
 		});
 		
-		let deleteURI = this.rootURI.clone();
+		let deleteURI = this.rootURI;
 		// This should never happen, but let's be safe
 		if (!deleteURI.spec.match(/\/$/)) {
 			throw new Error("Root URI does not end in slash");

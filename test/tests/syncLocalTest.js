@@ -43,21 +43,23 @@ describe("Zotero.Sync.Data.Local", function() {
 			yield Zotero.Users.setCurrentUsername("A");
 			
 			var handled = false;
-			waitForDialog(function (dialog) {
-				var text = dialog.document.documentElement.textContent;
+			waitForDialog(function (window) {
+				var text = window.document.documentElement.textContent;
 				var matches = text.match(/“[^”]*”/g);
-				assert.equal(matches.length, 4);
+				assert.equal(matches.length, 5);
 				assert.equal(matches[0], "“A”");
 				assert.equal(matches[1], "“B”");
 				assert.equal(matches[2], "“A”");
 				assert.equal(matches[3], "“A”");
+				// Checkbox
+				assert.equal(matches[4], "“A”");
 				
-				dialog.document.getElementById('zotero-hardConfirmationDialog-checkbox').checked = true;
-				dialog.document.getElementById('zotero-hardConfirmationDialog-checkbox')
+				window.document.getElementById('zotero-hardConfirmationDialog-checkbox').checked = true;
+				window.document.getElementById('zotero-hardConfirmationDialog-checkbox')
 					.dispatchEvent(new Event('command'));
 				
 				handled = true;
-			}, 'accept', 'chrome://zotero/content/hardConfirmationDialog.xul');
+			}, 'accept', 'chrome://zotero/content/hardConfirmationDialog.xhtml');
 			var cont = yield Zotero.Sync.Data.Local.checkUser(window, 2, "B");
 			var resetDataDirFileExists = yield OS.File.exists(resetDataDirFile);
 			assert.isTrue(handled);
@@ -69,7 +71,7 @@ describe("Zotero.Sync.Data.Local", function() {
 			yield Zotero.Users.setCurrentUserID(1);
 			yield Zotero.Users.setCurrentUsername("A");
 			
-			waitForDialog(false, 'cancel', 'chrome://zotero/content/hardConfirmationDialog.xul');
+			waitForDialog(false, 'cancel', 'chrome://zotero/content/hardConfirmationDialog.xhtml');
 			var cont = yield Zotero.Sync.Data.Local.checkUser(window, 2, "B");
 			var resetDataDirFileExists = yield OS.File.exists(resetDataDirFile);
 			assert.isFalse(cont);
@@ -85,7 +87,7 @@ describe("Zotero.Sync.Data.Local", function() {
 			yield Zotero.Users.setCurrentUserID(1);
 			yield Zotero.Users.setCurrentUsername("A");
 			
-			waitForDialog(null, 'extra1', 'chrome://zotero/content/hardConfirmationDialog.xul');
+			waitForDialog(null, 'extra1', 'chrome://zotero/content/hardConfirmationDialog.xhtml');
 			waitForDialog();
 			var cont = yield Zotero.Sync.Data.Local.checkUser(window, 2, "B");
 			var resetDataDirFileExists = yield OS.File.exists(resetDataDirFile);
@@ -110,7 +112,7 @@ describe("Zotero.Sync.Data.Local", function() {
 				item2.toJSON().relations[pred][0].startsWith('http://zotero.org/users/local/')
 			);
 			
-			waitForDialog(false, 'accept', 'chrome://zotero/content/hardConfirmationDialog.xul');
+			waitForDialog(false, 'accept', 'chrome://zotero/content/hardConfirmationDialog.xhtml');
 			yield Zotero.Sync.Data.Local.checkUser(window, 1, "A");
 			
 			assert.isTrue(
@@ -1231,16 +1233,16 @@ describe("Zotero.Sync.Data.Local", function() {
 			note.setNote("Test");
 			yield note.saveTx();
 			
-			var promise = waitForWindow('chrome://zotero/content/merge.xul', function (dialog) {
+			var promise = waitForWindow('chrome://zotero/content/merge.xhtml', function (dialog) {
 				var doc = dialog.document;
-				var wizard = doc.documentElement;
-				var mergeGroup = wizard.getElementsByTagName('zoteromergegroup')[0];
+				var wizard = doc.querySelector('wizard');
+				var mergeGroup = wizard.getElementsByTagName('merge-group')[0];
 				
 				// Show title for middle and right panes
 				var parentText = Zotero.getString('pane.item.parentItem') + " Parent";
-				assert.equal(mergeGroup.leftpane._id('parent-row').textContent, "");
-				assert.equal(mergeGroup.rightpane._id('parent-row').textContent, parentText);
-				assert.equal(mergeGroup.mergepane._id('parent-row').textContent, parentText);
+				assert.equal(mergeGroup.leftPane.parentRow.textContent, "");
+				assert.equal(mergeGroup.rightPane.parentRow.textContent, parentText);
+				assert.equal(mergeGroup.mergePane.parentRow.textContent, parentText);
 				
 				wizard.getButton('finish').click();
 			});
@@ -1266,18 +1268,18 @@ describe("Zotero.Sync.Data.Local", function() {
 			var note = await createDataObject('item', { itemType: 'note' });
 			var item = await createDataObject('item');
 			
-			var promise = waitForWindow('chrome://zotero/content/merge.xul', function (dialog) {
+			var promise = waitForWindow('chrome://zotero/content/merge.xhtml', function (dialog) {
 				var doc = dialog.document;
-				var wizard = doc.documentElement;
-				var mergeGroup = wizard.getElementsByTagName('zoteromergegroup')[0];
+				var wizard = doc.querySelector('wizard');
+				var mergeGroup = wizard.getElementsByTagName('merge-group')[0];
 				
 				// 1 (accept remote deletion)
-				assert.equal(mergeGroup.leftpane.getAttribute('selected'), 'true');
-				mergeGroup.rightpane.click();
+				assert.equal(mergeGroup.leftPane.getAttribute('selected'), 'true');
+				mergeGroup.rightPane.click();
 				wizard.getButton('next').click();
 				
 				// 2 (accept remote deletion)
-				mergeGroup.rightpane.click();
+				mergeGroup.rightPane.click();
 				if (Zotero.isMac) {
 					assert.isTrue(wizard.getButton('next').hidden);
 					assert.isFalse(wizard.getButton('finish').hidden);

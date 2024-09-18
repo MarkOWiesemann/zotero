@@ -280,6 +280,67 @@ describe("Zotero.CollectionTree", function() {
 			assert.equal(selected, id);
 		});
 		
+		describe(".deleted selection", function () {
+			for (let objectType of ['collection', 'search']) {
+				it(`should select next row when ${objectType} is moved to trash`, async function () {
+					var ran = Zotero.Utilities.randomString();
+					var o1 = await createDataObject(objectType, { name: ran + "AAA" });
+					var o2 = await createDataObject(objectType, { name: ran + "BBB" });
+					var o3 = await createDataObject(objectType, { name: ran + "CCC" });
+					
+					await cv.selectByID(o2.treeViewID);
+					
+					o2.deleted = true;
+					await o2.saveTx();
+					
+					assert.equal(zp.getCollectionTreeRow().ref.id, o3.id);
+				});
+				
+				it(`should maintain selection on ${objectType} when row above is moved to trash`, async function () {
+					var ran = Zotero.Utilities.randomString();
+					var o1 = await createDataObject(objectType, { name: ran + "AAA" });
+					var o2 = await createDataObject(objectType, { name: ran + "BBB" });
+					var o3 = await createDataObject(objectType, { name: ran + "CCC" });
+					
+					assert.equal(zp.getCollectionTreeRow().ref.id, o3.id);
+					
+					o1.deleted = true;
+					await o1.saveTx();
+					
+					assert.equal(zp.getCollectionTreeRow().ref.id, o3.id);
+				});
+				
+				it(`should maintain selection on trash when ${objectType} is restored`, async function () {
+					var o = await createDataObject(objectType, { deleted: true });
+					
+					await cv.selectByID("T1");
+					
+					o.deleted = false;
+					await o.saveTx();
+					
+					assert.isTrue(zp.getCollectionTreeRow().isTrash());
+					
+					// Row should have been added back
+					assert.isAbove(cv.getRowIndexByID(o.treeViewID), 0);
+				});
+			}
+		});
+		
+		for (let objectType of ['collection', 'search']) {
+			it(`should select next row when ${objectType} is erased`, async function () {
+				var ran = Zotero.Utilities.randomString();
+				var o1 = await createDataObject(objectType, { name: ran + "AAA" });
+				var o2 = await createDataObject(objectType, { name: ran + "BBB" });
+				var o3 = await createDataObject(objectType, { name: ran + "CCC" });
+				
+				await cv.selectByID(o2.treeViewID);
+				
+				await o2.eraseTx();
+				
+				assert.equal(zp.getCollectionTreeRow().ref.id, o3.id);
+			});
+		}
+		
 		it("should update the editability of the current view", function* () {
 			var group = yield createGroup({
 				editable: false,
@@ -363,11 +424,11 @@ describe("Zotero.CollectionTree", function() {
 		
 		it("should add multiple collections", function* () {
 			var col1, col2;
-			yield Zotero.DB.executeTransaction(function* () {
+			yield Zotero.DB.executeTransaction(async function () {
 				col1 = createUnsavedDataObject('collection');
 				col2 = createUnsavedDataObject('collection');
-				yield col1.save();
-				yield col2.save();
+				await col1.save();
+				await col2.save();
 			});
 			
 			var aRow = cv.getRowIndexByID("C" + col1.id);
@@ -674,87 +735,87 @@ describe("Zotero.CollectionTree", function() {
 			});
 			
 			describe("My Publications", function () {
-				it("should add an item to My Publications", function* () {
+				function getItemModifyPromise(item) {
+					// Add observer to wait for item modification
+					return new Zotero.Promise((resolve) => {
+						var observerID = Zotero.Notifier.registerObserver({
+							notify: function (event, type, ids, extraData) {
+								if (type == 'item' && event == 'modify' && ids[0] == item.id) {
+									setTimeout(resolve);
+									Zotero.Notifier.unregisterObserver(observerID);
+								}
+							}
+						}, 'item', 'test');
+					});
+				}
+				
+				function acceptItemsWithoutFiles(win) {
+					var doc = win.document;
+					doc.getElementById('confirm-authorship-checkbox').checked = true;
+					var wizard = doc.getElementById('publications-dialog-wizard');
+					if (!doc.getElementById('include-files').disabled) {
+						throw new Error("Include Files checkbox isn't disabled");
+					}
+					wizard.getButton('next').click();
+				}
+				
+				function acceptItemsWithFiles(win) {
+					var doc = win.document;
+					doc.getElementById('include-files').checked = true;
+					doc.getElementById('confirm-authorship-checkbox').checked = true;
+					var wizard = doc.getElementById('publications-dialog-wizard');
+					if (doc.getElementById('include-files').disabled) {
+						throw new Error("Include Files checkbox shouldn't be disabled");
+					}
+					wizard.getButton('next').click();
+					wizard.getButton('next').click();
+				}
+				
+				it("should add an item to My Publications", async function () {
 					// Remove other items in My Publications
 					var s = new Zotero.Search();
 					s.addCondition('libraryID', 'is', Zotero.Libraries.userLibraryID);
 					s.addCondition('publications', 'true');
-					var ids = yield s.search();
-					yield Zotero.Items.erase(ids);
+					var ids = await s.search();
+					await Zotero.Items.erase(ids);
 					
-					var item = yield createDataObject('item', false, { skipSelect: true });
+					var item = await createDataObject('item', false, { skipSelect: true });
 					var libraryID = item.libraryID;
 					
-					var stub = sinon.stub(zp, "showPublicationsWizard")
-						.returns({
-							includeNotes: false,
-							includeFiles: false,
-							keepRights: true
-						});
-					
-					// Add observer to wait for item modification
-					var deferred = Zotero.Promise.defer();
-					var observerID = Zotero.Notifier.registerObserver({
-						notify: function (event, type, ids, extraData) {
-							if (type == 'item' && event == 'modify' && ids[0] == item.id) {
-								setTimeout(function () {
-									deferred.resolve();
-								});
-							}
-						}
-					}, 'item', 'test');
-					
-					yield onDrop('item', 'P' + libraryID, [item.id], deferred.promise);
-					
-					Zotero.Notifier.unregisterObserver(observerID);
-					stub.restore();
+					var itemModifyPromise = getItemModifyPromise(item);
+					var winPromise = waitForWindow('chrome://zotero/content/publicationsDialog.xhtml')
+					var dropPromise = onDrop('item', 'P' + libraryID, [item.id], itemModifyPromise);
+					acceptItemsWithoutFiles(await winPromise);
+					await dropPromise;
 					
 					// Select publications and check for item
-					yield cv.selectByID("P" + libraryID);
-					yield waitForItemsLoad(win);
+					await cv.selectByID("P" + libraryID);
+					await waitForItemsLoad(win);
 					var itemsView = win.ZoteroPane.itemsView
 					assert.equal(itemsView.rowCount, 1);
 					var treeRow = itemsView.getRow(0);
 					assert.equal(treeRow.ref.id, item.id);
 				});
 				
-				it("should add an item with a file attachment to My Publications", function* () {
-					var item = yield createDataObject('item', false, { skipSelect: true });
-					var attachment = yield importFileAttachment('test.png', { parentItemID: item.id });
+				it("should add an item with a file attachment to My Publications", async function () {
+					var item = await createDataObject('item', false, { skipSelect: true });
+					var attachment = await importFileAttachment('test.png', { parentItemID: item.id });
 					var libraryID = item.libraryID;
 					
-					var stub = sinon.stub(zp, "showPublicationsWizard")
-						.returns({
-							includeNotes: false,
-							includeFiles: true,
-							keepRights: true
-						});
-					
-					// Add observer to wait for modify
-					var deferred = Zotero.Promise.defer();
-					var observerID = Zotero.Notifier.registerObserver({
-						notify: function (event, type, ids, extraData) {
-							if (type == 'item' && event == 'modify' && ids[0] == item.id) {
-								setTimeout(function () {
-									deferred.resolve();
-								});
-							}
-						}
-					}, 'item', 'test');
-					
-					yield onDrop('item', 'P' + libraryID, [item.id], deferred.promise);
-					
-					Zotero.Notifier.unregisterObserver(observerID);
-					stub.restore();
+					var itemModifyPromise = getItemModifyPromise(item);
+					var winPromise = waitForWindow('chrome://zotero/content/publicationsDialog.xhtml')
+					var dropPromise = onDrop('item', 'P' + libraryID, [item.id], itemModifyPromise);
+					acceptItemsWithFiles(await winPromise);
+					await dropPromise;
 					
 					assert.isTrue(item.inPublications);
 					// File attachment should be in My Publications
 					assert.isTrue(attachment.inPublications);
 				});
 				
-				it("should add an item with a linked URL attachment to My Publications", function* () {
-					var item = yield createDataObject('item', false, { skipSelect: true });
-					var attachment = yield Zotero.Attachments.linkFromURL({
+				it("should add an item with a linked URL attachment to My Publications", async function () {
+					var item = await createDataObject('item', false, { skipSelect: true });
+					var attachment = await Zotero.Attachments.linkFromURL({
 						parentItemID: item.id,
 						title: 'Test',
 						url: 'http://127.0.0.1/',
@@ -762,38 +823,20 @@ describe("Zotero.CollectionTree", function() {
 					});
 					var libraryID = item.libraryID;
 					
-					var stub = sinon.stub(zp, "showPublicationsWizard")
-						.returns({
-							includeNotes: false,
-							includeFiles: false,
-							keepRights: true
-						});
-					
-					// Add observer to wait for modify
-					var deferred = Zotero.Promise.defer();
-					var observerID = Zotero.Notifier.registerObserver({
-						notify: function (event, type, ids, extraData) {
-							if (type == 'item' && event == 'modify' && ids[0] == item.id) {
-								setTimeout(function () {
-									deferred.resolve();
-								});
-							}
-						}
-					}, 'item', 'test');
-					
-					yield onDrop('item', 'P' + libraryID, [item.id], deferred.promise);
-					
-					Zotero.Notifier.unregisterObserver(observerID);
-					stub.restore();
+					var itemModifyPromise = getItemModifyPromise(item);
+					var winPromise = waitForWindow('chrome://zotero/content/publicationsDialog.xhtml')
+					var dropPromise = onDrop('item', 'P' + libraryID, [item.id], itemModifyPromise);
+					acceptItemsWithoutFiles(await winPromise);
+					await dropPromise;
 					
 					assert.isTrue(item.inPublications);
 					// Link attachment should be in My Publications
 					assert.isTrue(attachment.inPublications);
 				});
 				
-				it("shouldn't add linked file attachment to My Publications", function* () {
-					var item = yield createDataObject('item', false, { skipSelect: true });
-					var attachment = yield Zotero.Attachments.linkFromFile({
+				it("shouldn't add linked file attachment to My Publications", async function () {
+					var item = await createDataObject('item', false, { skipSelect: true });
+					var attachment = await Zotero.Attachments.linkFromFile({
 						parentItemID: item.id,
 						title: 'Test',
 						file: OS.Path.join(getTestDataDirectory().path, 'test.png'),
@@ -801,29 +844,11 @@ describe("Zotero.CollectionTree", function() {
 					});
 					var libraryID = item.libraryID;
 					
-					var stub = sinon.stub(zp, "showPublicationsWizard")
-						.returns({
-							includeNotes: false,
-							includeFiles: false,
-							keepRights: true
-						});
-					
-					// Add observer to wait for modify
-					var deferred = Zotero.Promise.defer();
-					var observerID = Zotero.Notifier.registerObserver({
-						notify: function (event, type, ids, extraData) {
-							if (type == 'item' && event == 'modify' && ids[0] == item.id) {
-								setTimeout(function () {
-									deferred.resolve();
-								});
-							}
-						}
-					}, 'item', 'test');
-					
-					yield onDrop('item', 'P' + libraryID, [item.id], deferred.promise);
-					
-					Zotero.Notifier.unregisterObserver(observerID);
-					stub.restore();
+					var itemModifyPromise = getItemModifyPromise(item);
+					var winPromise = waitForWindow('chrome://zotero/content/publicationsDialog.xhtml')
+					var dropPromise = onDrop('item', 'P' + libraryID, [item.id], itemModifyPromise);
+					acceptItemsWithoutFiles(await winPromise);
+					await dropPromise;
 					
 					assert.isTrue(item.inPublications);
 					// Linked URL attachment shouldn't be in My Publications
@@ -1238,10 +1263,33 @@ describe("Zotero.CollectionTree", function() {
 
 
 		describe("with feed items", function () {
-			it('should add a translated feed item recovered from an URL', function* (){
+			Components.utils.import("resource://zotero-unit/httpd.js");
+			
+			const httpdPort = 16214;
+			var httpd;
+			
+			before(async function () {
+				httpd = new HttpServer();
+				httpd.start(httpdPort);
+			});
+			
+			after(async function () {
+				await new Promise(resolve => httpd.stop(resolve));
+			});
+			
+			it("should add a translated feed item retrieved from a URL", function* () {
+				// Serve the feed entry webpage via localhost
+				const urlPath = "/journalArticle-single.html";
+				const url = `http://localhost:${httpdPort}` + urlPath;
+				httpd.registerFile(
+					urlPath,
+					Zotero.File.pathToFile(OS.Path.join(
+						getTestDataDirectory().path, 'metadata', 'journalArticle-single.html'
+					))
+				);
+				
 				var feed = yield createFeed();
 				var collection = yield createDataObject('collection', false, { skipSelect: true });
-				var url = getTestDataUrl('metadata/journalArticle-single.html');
 				var feedItem = yield createDataObject('feedItem', {libraryID: feed.libraryID}, { skipSelect: true });
 				feedItem.setField('url', url);
 				yield feedItem.saveTx();
@@ -1270,4 +1318,60 @@ describe("Zotero.CollectionTree", function() {
 			})
 		})
 	})
+
+	describe("Feeds pseudo-library", function () {
+		beforeEach(async function () {
+			for (let feed of Zotero.Feeds.getAll()) {
+				await feed.eraseTx();
+			}
+		});
+		
+		it("should contain feed items from all feeds", async function () {
+			let feed1 = await createFeed();
+			let feed2 = await createFeed();
+			let feedItem1 = await createDataObject('feedItem', { libraryID: feed1.libraryID }, { skipSelect: true });
+			let feedItem2 = await createDataObject('feedItem', { libraryID: feed2.libraryID }, { skipSelect: true });
+			await cv.selectFeeds();
+			await waitForItemsLoad(win);
+			
+			let itemsView = zp.itemsView;
+			assert.equal(itemsView.rowCount, 2);
+			assert.equal(itemsView.getRow(0).ref.id, feedItem2.id);
+			assert.equal(itemsView.getRow(1).ref.id, feedItem1.id);
+		});
+
+		it("should be filterable", async function () {
+			let feed1 = await createFeed();
+			let feed2 = await createFeed();
+			let feedItem1 = await createDataObject('feedItem', { libraryID: feed1.libraryID, setTitle: true }, { skipSelect: true });
+			let feedItem2 = await createDataObject('feedItem', { libraryID: feed2.libraryID, setTitle: true }, { skipSelect: true });
+			await cv.selectFeeds();
+			await waitForItemsLoad(win);
+
+			var quickSearch = win.document.getElementById('zotero-tb-search');
+			quickSearch.value = feedItem1.getField('title');
+			quickSearch.doCommand();
+
+			let itemsView = zp.itemsView;
+			await itemsView._refreshPromise;
+			assert.equal(itemsView.rowCount, 1);
+			assert.equal(itemsView.getRow(0).ref.id, feedItem1.id);
+		});
+
+		it("should be bold if any feed items are unread", async function () {
+			let feed1 = await createFeed();
+			let feed2 = await createFeed();
+			let feedItem1 = await createDataObject('feedItem', { libraryID: feed1.libraryID, setTitle: true }, { skipSelect: true });
+			let feedItem2 = await createDataObject('feedItem', { libraryID: feed2.libraryID, setTitle: true }, { skipSelect: true });
+			
+			await feedItem1.toggleRead(true);
+			
+			// Unread count is automatically updated on feed refresh, but we need to do it manually here
+			await feed1.updateUnreadCount();
+			await feed2.updateUnreadCount();
+			
+			assert.equal(cv.getRow(cv.getRowIndexByID('F1')).ref.unreadCount, 1);
+			assert.lengthOf(win.document.querySelectorAll('#zotero-collections-tree .row.unread'), 2);
+		});
+	});
 })
