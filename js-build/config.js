@@ -64,6 +64,7 @@ const symlinkFiles = [
 	'resource/vs/language/typescript/*.js',
 	'resource/vs/language/json/*.js',
 	'version',
+	'install.rdf',
 ];
 
 
