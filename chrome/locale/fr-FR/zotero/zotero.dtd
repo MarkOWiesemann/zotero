@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Supprimer le document…">
 <!ENTITY zotero.toolbar.newLibrary.label "Nouvelle bibliothèque">
 <!ENTITY zotero.toolbar.newCollection.label "Nouvelle collection…">
+<!ENTITY zotero.toolbar.markFeedRead.label "Marquer le flux comme lu">
 <!ENTITY zotero.toolbar.newGroup "Nouveau groupe…">
 <!ENTITY zotero.toolbar.newSubcollection.label "Nouvelle sous-collection…">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Nouvelle recherche enregistrée…">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Nouveau flux">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "À partir de l'URI…">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "À partir d'un fichier OPML…">
+<!ENTITY zotero.toolbar.feeds.refresh "Actualiser le flux">
 <!ENTITY zotero.toolbar.feeds.edit "Modifier le flux…">
 
 <!ENTITY zotero.item.add "Ajouter">
@@ -113,7 +115,6 @@
 <!ENTITY zotero.item.textTransform.titlecase "Initiales En Majuscules">
 <!ENTITY zotero.item.textTransform.sentencecase "Lettre capitale en début de phrase">
 <!ENTITY zotero.item.creatorTransform.nameSwap "Inverser prénom/nom">
-<!ENTITY zotero.item.creatorTransform.fixCase "Corriger la casse">
 <!ENTITY zotero.item.viewOnline "Afficher en ligne">
 <!ENTITY zotero.item.copyAsURL "Copier comme un lien">
 <!ENTITY zotero.item.deletePermanently "Supprimer définitivement…">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Attribuer une couleur…">
 <!ENTITY zotero.tagSelector.renameTag "Renommer le marqueur…">
 <!ENTITY zotero.tagSelector.deleteTag "Effacer le marqueur…">
-<!ENTITY zotero.tagSelector.splitTag "Scinder...">
 
 <!ENTITY zotero.tagColorChooser.title "Attribuer une couleur et un raccourci au marqueur">
 <!ENTITY zotero.tagColorChooser.color "Couleur :">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Importer">
 <!ENTITY zotero.import.whereToImportFrom "D'où voulez-vous importer ?">
 <!ENTITY zotero.import.source.file "Un fichier (BibTeX, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "Un dossier de PDFs ou d'autres fichiers">
-<!ENTITY zotero.import.onlineImport "import en ligne">
 <!ENTITY zotero.import.importing "Importation…">
 <!ENTITY zotero.import.database "Base de données">
 <!ENTITY zotero.import.lastModified "Dernière modification">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Placer les collections et les documents importés dans une nouvelle collection">
 <!ENTITY zotero.import.fileHandling "Gestion des fichiers">
 <!ENTITY zotero.import.online.newItemsOnly "Télécharger uniquement les nouveaux documents ; ne pas mettre à jour les documents importés précédemment">
+<!ENTITY zotero.import.online.relinkOnly "Relier les citations de Mendeley Desktop">
 
 <!ENTITY zotero.exportOptions.title "Exporter…">
 <!ENTITY zotero.exportOptions.format.label "Format :">
@@ -322,16 +321,14 @@
 <!ENTITY zotero.pdfReader.noSpreads "Pas de double affichage">
 <!ENTITY zotero.pdfReader.oddSpreads "Doubles pages, impaires à gauche">
 <!ENTITY zotero.pdfReader.evenSpreads "Doubles pages, paires à gauche">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoomer">
 <!ENTITY zotero.pdfReader.zoomOut "Dé-zoomer">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Zoom automatique">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Pleine largeur">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Pleine hauteur">
 <!ENTITY zotero.pdfReader.splitVertically "Diviser Verticalement">
 <!ENTITY zotero.pdfReader.splitHorizontally "Diviser Horizontalement">
-<!ENTITY zotero.pdfReader.transferFromPDF "Importer les annotations...">
+<!ENTITY zotero.pdfReader.transferFromPDF "Importer des annotations...">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotation anti-horaire">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotation horaire">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotation à 180°">

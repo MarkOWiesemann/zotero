@@ -26,11 +26,9 @@
 import FilePicker from 'zotero/modules/filePicker';
 
 var Zotero_CSL_Editor = new function() {
-	let monaco, editor;
-
 	this.init = init;
+	this.handleKeyPress = handleKeyPress;
 	this.loadCSL = loadCSL;
-
 	async function init() {
 		await Zotero.Schema.schemaUpdatePromise;
 		
@@ -54,6 +52,11 @@ var Zotero_CSL_Editor = new function() {
 			}
 		}
 		
+		if (currentStyle) {
+			// Call asynchronously, see note in Zotero.Styles
+			window.setTimeout(this.onStyleSelected.bind(this, currentStyle.styleID), 1);
+		}
+		
 		var pageList = document.getElementById('zotero-csl-page-type');
 		var locators = Zotero.Cite.labels;
 		for (let locator of locators) {
@@ -61,23 +64,6 @@ var Zotero_CSL_Editor = new function() {
 		}
 		
 		pageList.selectedIndex = 0;
-
-		let editorWin = document.getElementById("zotero-csl-editor-iframe").contentWindow;
-		let { monaco: _monaco, editor: _editor } = await editorWin.loadMonaco({
-			language: 'xml',
-			theme: 'vs-light'
-		});
-		monaco = _monaco;
-		editor = _editor;
-
-		editor.getModel().onDidChangeContent(Zotero.Utilities.debounce(() => {
-			this.onStyleModified();
-		}, 250));
-
-		if (currentStyle) {
-			// Call asynchronously, see note in Zotero.Styles
-			window.setTimeout(this.onStyleSelected.bind(this, currentStyle.styleID), 1);
-		}
 	}
 	
 	this.onStyleSelected = function(styleID) {
@@ -96,11 +82,10 @@ var Zotero_CSL_Editor = new function() {
 	this.refresh = function() {
 		this.generateBibliography(this.loadStyleFromEditor());
 	}
-
-	this.refreshDebounced = Zotero.Utilities.debounce(this.refresh, 250);
 	
 	this.save = async function () {
-		var style = editor.getValue();
+		var editor = document.getElementById('zotero-csl-editor');
+		var style = editor.value;
 		var fp = new FilePicker();
 		fp.init(window, Zotero.getString('styles.editor.save'), fp.modeSave);
 		fp.appendFilter("Citation Style Language", "*.csl");
@@ -122,9 +107,21 @@ var Zotero_CSL_Editor = new function() {
 		}
 	};
 	
+	function handleKeyPress(event) {
+		if (event.keyCode == 9 &&
+				(!event.shiftKey && !event.metaKey && !event.altKey && !event.ctrlKey)) {
+			_insertText("\t");
+			event.preventDefault();
+		}
+	}
+	
+	
 	function loadCSL(cslID) {
+		var editor = document.getElementById('zotero-csl-editor');
 		var style = Zotero.Styles.get(cslID);
-		editor.setValue(style.getXML());
+		editor.value = style.getXML();
+		editor.cslID = cslID;
+		editor.doCommand();
 		document.getElementById('zotero-csl-list').value = cslID;
 	}
 	
@@ -132,7 +129,7 @@ var Zotero_CSL_Editor = new function() {
 		var styleObject;
 		try {
 			styleObject = new Zotero.Style(
-				editor.getValue()
+				document.getElementById('zotero-csl-editor').value
 			);
 		} catch(e) {
 			document.getElementById('zotero-csl-preview-box')
@@ -145,17 +142,8 @@ var Zotero_CSL_Editor = new function() {
 		return styleObject;
 	}
 	
-	this.onStyleModified = function () {
-		let xml = editor.getValue();
-		Zotero.Styles.validate(xml).then(
-			() => this.updateMarkers(''),
-			rawErrors => this.updateMarkers(rawErrors)
-		);
-		let cslList = document.getElementById('zotero-csl-list');
-		let savedStyle = Zotero.Styles.get(cslList.value);
-		if (!savedStyle || xml !== savedStyle?.getXML()) {
-			cslList.selectedIndex = -1;
-		}
+	this.onStyleModified = function(str) {
+		document.getElementById('zotero-csl-list').selectedIndex = -1;
 		
 		let styleObject = this.loadStyleFromEditor();
 		
@@ -169,6 +157,7 @@ var Zotero_CSL_Editor = new function() {
 	
 	this.generateBibliography = function(style) {
 		var iframe = document.getElementById('zotero-csl-preview-box');
+		var editor = document.getElementById('zotero-csl-editor');
 		
 		var items = Zotero.getActiveZoteroPane().getSelectedItems();
 		if (items.length == 0) {
@@ -242,26 +231,18 @@ var Zotero_CSL_Editor = new function() {
 		}
 		styleEngine.free();
 	}
-
-	this.updateMarkers = function (rawErrors) {
-		let model = editor.getModel();
-		let errors = rawErrors ? rawErrors.split('\n') : [];
-		let markers = errors.map((error) => {
-			let matches = error.match(/^[^:]*:(?<line>[^:]*):(?<column>[^:]*): error: (?<message>.+)/);
-			if (!matches) return null;
-			let { line, message } = matches.groups;
-			line = parseInt(line);
-			return {
-				startLineNumber: line,
-				endLineNumber: line,
-				// The error message doesn't give us an end column, so using its
-				// start column looks weird. Just highlight the whole line.
-				startColumn: model.getLineFirstNonWhitespaceColumn(line),
-				endColumn: model.getLineMaxColumn(line),
-				message,
-				severity: 8
-			};
-		}).filter(Boolean);
-		monaco.editor.setModelMarkers(model, 'csl-validator', markers);
-	};
+	
+	
+	// From http://kb.mozillazine.org/Inserting_text_at_cursor
+	function _insertText(text) {
+		var command = "cmd_insertText";
+		var controller = document.commandDispatcher.getControllerForCommand(command);
+		if (controller && controller.isCommandEnabled(command)) {
+			controller = controller.QueryInterface(Components.interfaces.nsICommandController);
+			var params = Components.classes["@mozilla.org/embedcomp/command-params;1"];
+			params = params.createInstance(Components.interfaces.nsICommandParams);
+			params.setStringValue("state_data", "\t");
+			controller.doCommandWithParams(command, params);
+		}
+	}
 }();

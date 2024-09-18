@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Fjern ...">
 <!ENTITY zotero.toolbar.newLibrary.label "Nyt bibliotek">
 <!ENTITY zotero.toolbar.newCollection.label "Ny Samling...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Markér nyhedsstrøm som læst">
 <!ENTITY zotero.toolbar.newGroup "Ny Gruppe ...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Ny delsamling">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Ny gemt Søgning ...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Ny nyhedsstrøm">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Fra URL...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "Fra OPML...">
+<!ENTITY zotero.toolbar.feeds.refresh "Opdatér nyhedsstrøm">
 <!ENTITY zotero.toolbar.feeds.edit "Redigér nyhedsstrøm...">
 
 <!ENTITY zotero.item.add "Tilføj">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "Transformer tekst">
 <!ENTITY zotero.item.textTransform.titlecase "Betydende ord med stort ">
 <!ENTITY zotero.item.textTransform.sentencecase "Første bogstav med stort">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Ombyt fornavn/efternavn">
 <!ENTITY zotero.item.viewOnline "Vis online">
 <!ENTITY zotero.item.copyAsURL "Kopiér som URL">
 <!ENTITY zotero.item.deletePermanently "Slet permanent...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Tilknyt farve...">
 <!ENTITY zotero.tagSelector.renameTag "Omdøb mærket ...">
 <!ENTITY zotero.tagSelector.deleteTag "Slet mærket...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "Vælg en farve og placering">
 <!ENTITY zotero.tagColorChooser.color "Farve:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Importér">
 <!ENTITY zotero.import.whereToImportFrom "Hvor vil du importere fra?">
 <!ENTITY zotero.import.source.file "En fil (BibTeX, RIS, Zotero RDF osv.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "Importerer…">
 <!ENTITY zotero.import.database "Database">
 <!ENTITY zotero.import.lastModified "Sidst ændret">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Placér importerede samlinger og nye elementer i den nye samling">
 <!ENTITY zotero.import.fileHandling "Filhåndtering">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Eksportér...">
 <!ENTITY zotero.exportOptions.format.label "Format:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "No Spreads">
 <!ENTITY zotero.pdfReader.oddSpreads "Odd Spreads">
 <!ENTITY zotero.pdfReader.evenSpreads "Even Spreads">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom In">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom Out">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatically Resize">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom to Page Width">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

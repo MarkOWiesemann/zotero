@@ -7,11 +7,14 @@ content	zotero-platform		chrome/content/zotero-platform/unix/      os=FreeBSD
 content	zotero-platform		chrome/content/zotero-platform/unix/      os=OpenBSD
 
 content	zotero-platform-version chrome/content/zotero-platform/default-version/
-content	zotero-platform-version chrome/content/zotero-platform/mac-big-sur/ os=Darwin osversion>=11
+# Big Sur and later show up as 10.16 when linked against 10.11
+# (Usually: https://forums.zotero.org/discussion/98406/zotero-will-not-open-mac-os-monterey)
+content	zotero-platform-version chrome/content/zotero-platform/mac-big-sur/ os=Darwin osversion>=10.16
+#content	zotero-platform-version chrome/content/zotero-platform/mac-big-sur/ os=Darwin
 
 resource zotero				resource/
 
-# Keep in sync with locale.js and app/assets/multilocale.txt
+# Keep in sync with locale.js and zotero-standalone-build:assets/multilocale.txt
 locale	zotero	en-US		chrome/locale/en-US/zotero/
 #locale	zotero	af-ZA		chrome/locale/af-ZA/zotero/
 locale	zotero	ar		chrome/locale/ar/zotero/
@@ -62,17 +65,21 @@ locale	zotero	zh-TW		chrome/locale/zh-TW/zotero/
 
 skin		zotero	default		chrome/skin/default/zotero/
 
+overlay	chrome://browser/content/browser.xul	chrome://zotero/content/overlay.xul
+
+style	chrome://browser/content/browser.xul	chrome://zotero/skin/zotero.css
+
 component	{e4c61080-ec2d-11da-8ad9-0800200c9a66}			components/zotero-service.js
 component	{531828f8-a16c-46be-b9aa-14845c3b010f}			components/zotero-service.js
 contract	@zotero.org/Zotero;1 							{e4c61080-ec2d-11da-8ad9-0800200c9a66}
-contract	@mozilla.org/browser/clh;1						{531828f8-a16c-46be-b9aa-14845c3b010f}
-category	command-line-handler m-zotero					@mozilla.org/browser/clh;1
+contract	@mozilla.org/commandlinehandler/general-startup;1?type=zotero 	{531828f8-a16c-46be-b9aa-14845c3b010f}
+category	command-line-handler 	m-zotero	@mozilla.org/commandlinehandler/general-startup;1?type=zotero
 
 component	{06a2ed11-d0a4-4ff0-a56f-a44545eee6ea}			components/zotero-autocomplete.js
 contract	@mozilla.org/autocomplete/search;1?name=zotero 	{06a2ed11-d0a4-4ff0-a56f-a44545eee6ea}
 
-component	{9BC3D762-9038-486A-9D70-C997AF848A7C}			components/zotero-protocol-handler.js	process=main
-contract	@mozilla.org/network/protocol;1?name=zotero 	{9BC3D762-9038-486A-9D70-C997AF848A7C}	process=main
+component	{9BC3D762-9038-486A-9D70-C997AF848A7C}			components/zotero-protocol-handler.js
+contract	@mozilla.org/network/protocol;1?name=zotero 	{9BC3D762-9038-486A-9D70-C997AF848A7C}
 
 # Scaffold
 content scaffold             chrome/content/scaffold/

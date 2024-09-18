@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Možnosti Zotera">
 
-<!ENTITY zotero.preferences.helpButton.label "Pomoc">
-
 <!ENTITY zotero.preferences.default "Predvolené:">
 <!ENTITY zotero.preferences.items "záznamov">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Všeobecné">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "Používanie súborov">
 <!ENTITY zotero.preferences.automaticSnapshots "pri vytváraní záznamov z webstránok automaticky urobiť snímku danej stránky">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "pri ukladaní záznamov automaticky priložiť prepojené PDF a ostatné súbory">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Automaticky získať metadáta pre PDF">
+<!ENTITY zotero.preferences.autoRenameFiles "Automaticky premenovať súbory príloh pomocou nadradených metadát">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Premenovať prelinkované súbory">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Otvoriť PDF pomocou">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "Predvolený systém">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Automaticky odstrániť záznamy vymazané pred viac ako">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "dňami">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Obnoviť históriu synchronizácie súborov">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Porovnať všetky priložené súbory so službou úschovne">
 <!ENTITY zotero.preferences.sync.reset "Obnova">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Obnoviť...">
 
 

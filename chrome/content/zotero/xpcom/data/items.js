@@ -460,11 +460,11 @@ Zotero.Items = function() {
 		);
 		
 		if (notesToUpdate.length) {
-			yield Zotero.DB.executeTransaction(async function () {
+			yield Zotero.DB.executeTransaction(function* () {
 				for (let i = 0; i < notesToUpdate.length; i++) {
 					let row = notesToUpdate[i];
 					let sql = "UPDATE itemNotes SET note=? WHERE itemID=?";
-					await Zotero.DB.queryAsync(sql, [row[1], row[0]]);
+					yield Zotero.DB.queryAsync(sql, [row[1], row[0]]);
 				}
 			}.bind(this));
 		}
@@ -946,33 +946,18 @@ Zotero.Items = function() {
 	 *
 	 * @param {Zotero.Item} fromItem
 	 * @param {Zotero.Item} toItem
-	 * @param {Object} options
-	 * @param {Boolean} [includeTrashed=false]
-	 * @param {Boolean} [skipEditCheck=false]
+	 * @param {Boolean} includeTrashed
 	 * @return {Promise}
 	 */
-	this.moveChildItems = async function (fromItem, toItem, { includeTrashed = false, skipEditCheck = false } = {}) {
+	this.moveChildItems = async function (fromItem, toItem, includeTrashed = false) {
 		Zotero.DB.requireTransaction();
 		
 		// Annotations on files
 		if (fromItem.isFileAttachment()) {
 			let annotations = fromItem.getAnnotations(includeTrashed);
 			for (let annotation of annotations) {
-				if (annotation.annotationIsExternal) {
-					await annotation.erase();
-					continue;
-				}
 				annotation.parentItemID = toItem.id;
-				await annotation.save({ skipEditCheck });
-			}
-		}
-		
-		if (toItem.isFileAttachment()) {
-			let annotations = toItem.getAnnotations(includeTrashed);
-			for (let annotation of annotations) {
-				if (annotation.annotationIsExternal) {
-					await annotation.erase();
-				}
+				await annotation.save();
 			}
 		}
 		
@@ -983,16 +968,16 @@ Zotero.Items = function() {
 	this.merge = function (item, otherItems) {
 		Zotero.debug("Merging items");
 
-		return Zotero.DB.executeTransaction(async function () {
+		return Zotero.DB.executeTransaction(function* () {
 			var replPred = Zotero.Relations.replacedItemPredicate;
 			var toSave = {};
 			toSave[item.id] = item;
 			
 			var earliestDateAdded = item.dateAdded;
 
-			let remapAttachmentKeys = await this._mergePDFAttachments(item, otherItems);
-			await this._mergeWebAttachments(item, otherItems);
-			await this._mergeOtherAttachments(item, otherItems);
+			let remapAttachmentKeys = yield this._mergePDFAttachments(item, otherItems);
+			yield this._mergeWebAttachments(item, otherItems);
+			yield this._mergeOtherAttachments(item, otherItems);
 			
 			for (let otherItem of otherItems) {
 				if (otherItem.libraryID !== item.libraryID) {
@@ -1007,7 +992,7 @@ Zotero.Items = function() {
 				// Move notes to master
 				var noteIDs = otherItem.getNotes(true);
 				for (let id of noteIDs) {
-					var note = await this.getAsync(id);
+					var note = yield this.getAsync(id);
 					note.parentItemID = item.id;
 					Zotero.Notes.replaceItemKey(note, otherItem.key, item.key);
 					Zotero.Notes.replaceAllItemKeys(note, remapAttachmentKeys);
@@ -1015,8 +1000,9 @@ Zotero.Items = function() {
 				}
 				
 				// Move relations to master
-				await this._moveRelations(otherItem, item);
+				yield this._moveRelations(otherItem, item);
 				
+				// All other operations are additive only and do not affect the
 				// old item, which will be put in the trash
 				
 				// Add collections to master
@@ -1051,10 +1037,10 @@ Zotero.Items = function() {
 
 			// Hack to remove master item from duplicates view without recalculating duplicates
 			// Pass force = true so observers will be notified before this transaction is committed
-			await Zotero.Notifier.trigger('removeDuplicatesMaster', 'item', item.id, null, true);
+			yield Zotero.Notifier.trigger('removeDuplicatesMaster', 'item', item.id, null, true);
 			
 			for (let i in toSave) {
-				await toSave[i].save();
+				yield toSave[i].save();
 			}
 		}.bind(this));
 	};
@@ -1073,14 +1059,7 @@ Zotero.Items = function() {
 			let doMerge = async (fromAttachment, toAttachment) => {
 				mergedMasterAttachments.add(toAttachment.id);
 	
-				await this.moveChildItems(
-					fromAttachment,
-					toAttachment,
-					{
-						includeTrashed: true,
-						skipEditCheck: true
-					}
-				);
+				await this.moveChildItems(fromAttachment, toAttachment, true);
 				await this._moveEmbeddedNote(fromAttachment, toAttachment);
 				await this._moveRelations(fromAttachment, toAttachment);
 	
@@ -1151,21 +1130,16 @@ Zotero.Items = function() {
 				}
 
 				// Check whether master and other have embedded annotations
-				// Error -> be safe and assume the item does have embedded annotations
-				let logAndBeSafe = (e) => {
-					Zotero.logError(e);
-					return true;
-				};
-
-				if (await otherAttachment.hasEmbeddedAnnotations().catch(logAndBeSafe)) {
-					// Other yes, master yes -> keep both
-					if (await masterAttachment.hasEmbeddedAnnotations().catch(logAndBeSafe)) {
+				// Master yes, other yes -> keep both
+				// Master yes, other no -> keep master
+				// Master no, other yes -> keep other
+				if (await otherAttachment.hasEmbeddedAnnotations()) {
+					if (await masterAttachment.hasEmbeddedAnnotations()) {
 						Zotero.debug(`Master attachment ${masterAttachment.key} matches ${otherAttachment.key}, `
 							+ 'but both have embedded annotations - keeping both');
 						otherAttachment.parentItemID = item.id;
 						await otherAttachment.save();
 					}
-					// Other yes, master no -> keep other
 					else {
 						Zotero.debug(`Master attachment ${masterAttachment.key} matches ${otherAttachment.key}, `
 							+ 'but other has embedded annotations - merging into other');
@@ -1175,8 +1149,6 @@ Zotero.Items = function() {
 					}
 					continue;
 				}
-				// Other no, master yes -> keep master
-				// Other no, master no -> keep master
 
 				Zotero.debug(`Master attachment ${masterAttachment.key} matches ${otherAttachment.key} - merging into master`);
 				await doMerge(otherAttachment, masterAttachment);
@@ -1491,7 +1463,7 @@ Zotero.Items = function() {
 	
 	
 	this.trashTx = function (ids) {
-		return Zotero.DB.executeTransaction(async function () {
+		return Zotero.DB.executeTransaction(function* () {
 			return this.trash(ids);
 		}.bind(this));
 	}
@@ -1609,8 +1581,8 @@ Zotero.Items = function() {
 			}
 		};
 		
-		var idleService = Components.classes["@mozilla.org/widget/useridleservice;1"].
-							getService(Components.interfaces.nsIUserIdleService);
+		var idleService = Components.classes["@mozilla.org/widget/idleservice;1"].
+							getService(Components.interfaces.nsIIdleService);
 		idleService.addIdleObserver(this._emptyTrashIdleObserver, 305);
 	}
 	
@@ -1618,7 +1590,7 @@ Zotero.Items = function() {
 	this.addToPublications = function (items, options = {}) {
 		if (!items.length) return;
 		
-		return Zotero.DB.executeTransaction(async function () {
+		return Zotero.DB.executeTransaction(function* () {
 			var timestamp = Zotero.DB.transactionTimestamp;
 			
 			var allItems = [...items];
@@ -1662,7 +1634,7 @@ Zotero.Items = function() {
 				}
 			}
 			
-			await Zotero.Utilities.Internal.forEachChunkAsync(allItems, 250, Zotero.Promise.coroutine(function* (chunk) {
+			yield Zotero.Utilities.Internal.forEachChunkAsync(allItems, 250, Zotero.Promise.coroutine(function* (chunk) {
 				for (let item of chunk) {
 					item.setPublications(true);
 					item.synced = false;
@@ -1682,7 +1654,7 @@ Zotero.Items = function() {
 	
 	
 	this.removeFromPublications = function (items) {
-		return Zotero.DB.executeTransaction(async function () {
+		return Zotero.DB.executeTransaction(function* () {
 			let allItems = [];
 			for (let item of items) {
 				if (!item.inPublications) {
@@ -1703,7 +1675,7 @@ Zotero.Items = function() {
 			});
 			
 			var timestamp = Zotero.DB.transactionTimestamp;
-			await Zotero.Utilities.Internal.forEachChunkAsync(allItems, 250, Zotero.Promise.coroutine(function* (chunk) {
+			yield Zotero.Utilities.Internal.forEachChunkAsync(allItems, 250, Zotero.Promise.coroutine(function* (chunk) {
 				let idStr = chunk.map(item => item.id).join(", ");
 				yield Zotero.DB.queryAsync(
 					`UPDATE items SET synced=0, clientDateModified=? WHERE itemID IN (${idStr})`,
@@ -1749,17 +1721,9 @@ Zotero.Items = function() {
 	 *
 	 * @param {Integer} itemTypeID
 	 * @param {Object} creatorData
-	 * @param {Object} [options]
-	 * @param {Boolean} [options.omitBidiIsolates]
 	 * @return {String}
 	 */
-	this.getFirstCreatorFromData = function (itemTypeID, creatorsData, options) {
-		if (!options) {
-			options = {
-				omitBidiIsolates: false
-			};
-		}
-		
+	this.getFirstCreatorFromData = function (itemTypeID, creatorsData) {
 		if (creatorsData.length === 0) {
 			return "";
 		}
@@ -1781,12 +1745,7 @@ Zotero.Items = function() {
 			if (matches.length === 2) {
 				let a = matches[0];
 				let b = matches[1];
-				let args = options.omitBidiIsolates
-					? [a.lastName, b.lastName]
-					// \u2068 FIRST STRONG ISOLATE: Isolates the directionality of characters that follow
-					// \u2069 POP DIRECTIONAL ISOLATE: Pops the above isolation
-					: [`\u2068${a.lastName}\u2069`, `\u2068${b.lastName}\u2069`];
-				return Zotero.getString('general.andJoiner', args);
+				return a.lastName + " " + Zotero.getString('general.and') + " " + b.lastName;
 			}
 			if (matches.length >= 3) {
 				return matches[0].lastName + " " + Zotero.getString('general.etAl');
@@ -1849,8 +1808,8 @@ Zotero.Items = function() {
 		var contributorCreatorTypeID = Zotero.CreatorTypes.getID('contributor');
 		
 		/* This whole block is to get the firstCreator */
-		var localizedAnd = Zotero.getString('general.andJoiner').replace(/%S/g, '%s');
-		var localizedEtAl = Zotero.getString('general.etAl');
+		var localizedAnd = Zotero.getString('general.and');
+		var localizedEtAl = Zotero.getString('general.etAl'); 
 		var sql = "COALESCE(" +
 			// First try for primary creator types
 			"CASE (" +
@@ -1867,21 +1826,16 @@ Zotero.Items = function() {
 				"WHERE itemID=O.itemID AND primaryField=1" +
 			") " +
 			"WHEN 2 THEN (" +
-				"SELECT PRINTF(" +
-					`'${localizedAnd}'` +
-					", " +
-					// \u2068 FIRST STRONG ISOLATE: Isolates the directionality of characters that follow
-					// \u2069 POP DIRECTIONAL ISOLATE: Pops the above isolation
-					"(SELECT '\u2068' || lastName || '\u2069' FROM itemCreators IC NATURAL JOIN creators " +
-					"LEFT JOIN itemTypeCreatorTypes ITCT " +
-					"ON (IC.creatorTypeID=ITCT.creatorTypeID AND ITCT.itemTypeID=O.itemTypeID) " +
-					"WHERE itemID=O.itemID AND primaryField=1 ORDER BY orderIndex LIMIT 1)" +
-					", " +
-					"(SELECT '\u2068' || lastName || '\u2069' FROM itemCreators IC NATURAL JOIN creators " +
-					"LEFT JOIN itemTypeCreatorTypes ITCT " +
-					"ON (IC.creatorTypeID=ITCT.creatorTypeID AND ITCT.itemTypeID=O.itemTypeID) " +
-					"WHERE itemID=O.itemID AND primaryField=1 ORDER BY orderIndex LIMIT 1,1)" +
-				")" +
+				"SELECT " +
+				"(SELECT lastName FROM itemCreators IC NATURAL JOIN creators " +
+				"LEFT JOIN itemTypeCreatorTypes ITCT " +
+				"ON (IC.creatorTypeID=ITCT.creatorTypeID AND ITCT.itemTypeID=O.itemTypeID) " +
+				"WHERE itemID=O.itemID AND primaryField=1 ORDER BY orderIndex LIMIT 1)" +
+				" || ' " + localizedAnd + " ' || " +
+				"(SELECT lastName FROM itemCreators IC NATURAL JOIN creators " +
+				"LEFT JOIN itemTypeCreatorTypes ITCT " +
+				"ON (IC.creatorTypeID=ITCT.creatorTypeID AND ITCT.itemTypeID=O.itemTypeID) " +
+				"WHERE itemID=O.itemID AND primaryField=1 ORDER BY orderIndex LIMIT 1,1)" +
 			") " +
 			"ELSE (" +
 				"SELECT " +
@@ -1904,17 +1858,14 @@ Zotero.Items = function() {
 				`WHERE itemID=O.itemID AND creatorTypeID=${editorCreatorTypeID}` +
 			") " +
 			"WHEN 2 THEN (" +
-				"SELECT PRINTF(" +
-					`'${localizedAnd}'` +
-					", " +
-					"(SELECT '\u2068' || lastName || '\u2069' FROM itemCreators NATURAL JOIN creators " +
-					`WHERE itemID=O.itemID AND creatorTypeID=${editorCreatorTypeID} ` +
-					"ORDER BY orderIndex LIMIT 1)" +
-					", " +
-					"(SELECT '\u2068' || lastName || '\u2069' FROM itemCreators NATURAL JOIN creators " +
-					`WHERE itemID=O.itemID AND creatorTypeID=${editorCreatorTypeID} ` +
-					"ORDER BY orderIndex LIMIT 1,1) " +
-				")" +
+				"SELECT " +
+				"(SELECT lastName FROM itemCreators NATURAL JOIN creators " +
+				`WHERE itemID=O.itemID AND creatorTypeID=${editorCreatorTypeID} ` +
+				"ORDER BY orderIndex LIMIT 1)" +
+				" || ' " + localizedAnd + " ' || " +
+				"(SELECT lastName FROM itemCreators NATURAL JOIN creators " +
+				`WHERE itemID=O.itemID AND creatorTypeID=${editorCreatorTypeID} ` +
+				"ORDER BY orderIndex LIMIT 1,1) " +
 			") " +
 			"ELSE (" +
 				"SELECT " +
@@ -1936,17 +1887,14 @@ Zotero.Items = function() {
 				`WHERE itemID=O.itemID AND creatorTypeID=${contributorCreatorTypeID}` +
 			") " +
 			"WHEN 2 THEN (" +
-				"SELECT PRINTF(" +
-					`'${localizedAnd}'` +
-					", " +
-					"(SELECT '\u2068' || lastName || '\u2069' FROM itemCreators NATURAL JOIN creators " +
-					`WHERE itemID=O.itemID AND creatorTypeID=${contributorCreatorTypeID} ` +
-					"ORDER BY orderIndex LIMIT 1)" +
-					", " +
-					"(SELECT '\u2068' || lastName || '\u2069' FROM itemCreators NATURAL JOIN creators " +
-					`WHERE itemID=O.itemID AND creatorTypeID=${contributorCreatorTypeID} ` +
-					"ORDER BY orderIndex LIMIT 1,1) " +
-				")" +
+				"SELECT " +
+				"(SELECT lastName FROM itemCreators NATURAL JOIN creators " +
+				`WHERE itemID=O.itemID AND creatorTypeID=${contributorCreatorTypeID} ` +
+				"ORDER BY orderIndex LIMIT 1)" +
+				" || ' " + localizedAnd + " ' || " +
+				"(SELECT lastName FROM itemCreators NATURAL JOIN creators " +
+				`WHERE itemID=O.itemID AND creatorTypeID=${contributorCreatorTypeID} ` +
+				"ORDER BY orderIndex LIMIT 1,1) " +
 			") " +
 			"ELSE (" +
 				"SELECT " +

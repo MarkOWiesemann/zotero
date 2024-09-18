@@ -32,11 +32,7 @@ const ZoteroStandalone = new function() {
 	const FONT_SIZES = ["1.0", "1.15", "1.3", "1.5", "1.7", "1.9", "2.1"];
 	//const NOTE_FONT_SIZES = ["11", "12", "13", "14", "18", "24", "36", "48", "64", "72", "96"];
 	const NOTE_FONT_SIZE_DEFAULT = "12";
-
-	Object.defineProperty(this, 'currentReader', {
-		get: () => Zotero.Reader.getByTabID(Zotero_Tabs.selectedID)
-	});
-
+	
 	/**
 	 * Run when standalone window first opens
 	 */
@@ -46,8 +42,8 @@ const ZoteroStandalone = new function() {
 			window.document.documentElement.setAttribute('sizemode', 'normal');
 		}
 		
+		// Create tab bar by default
 		if (Zotero.isMac) {
-			// Create tab bar by default
 			document.documentElement.setAttribute('drawintitlebar', true);
 			document.documentElement.setAttribute('tabsintitlebar', true);
 			document.documentElement.setAttribute('chromemargin', '0,-1,-1,-1');
@@ -65,16 +61,7 @@ const ZoteroStandalone = new function() {
 							this.updateQuickCopyOptions();
 						}, 0);
 						// "library" or "reader"
-						let type = extraData[ids[0]].type;
-						this.switchMenuType(type);
-						if (type === 'reader') {
-							let reader = Zotero.Reader.getByTabID(ids[0]);
-							if (reader) {
-								// "pdf", "epub", "snapshot"
-								let subtype = reader.type;
-								this.switchReaderSubtype(subtype);
-							}
-						}
+						this.switchMenuType(extraData[ids[0]].type);
 						setTimeout(() => ZoteroPane.updateToolbarPosition(), 0);
 					}
 				}
@@ -131,14 +118,13 @@ const ZoteroStandalone = new function() {
 			return;
 		});
 		
-		// Switch to library tab if dragging over PDF/EPUB/HTML file(s)
+		// Switch to library tab if dragging over one or more PDF files
 		window.addEventListener('dragover', function (event) {
 			// TODO: Consider allowing more (or all) file types, although shouldn't interfere with image dragging to note editor
 			if (Zotero_Tabs.selectedID != 'zotero-pane'
 					&& event.dataTransfer.items
 					&& event.dataTransfer.items.length
-					&& !Array.from(event.dataTransfer.items).find(x =>
-						!['application/pdf', 'application/epub+zip', 'text/html'].includes(x.type))) {
+					&& !Array.from(event.dataTransfer.items).find(x => x.type != 'application/pdf')) {
 				Zotero_Tabs.select('zotero-pane');
 			}
 		}, true);
@@ -149,13 +135,11 @@ const ZoteroStandalone = new function() {
 		document.querySelectorAll('.menu-type-' + type).forEach(el => el.hidden = false);
 	};
 
-	this.switchReaderSubtype = function (subtype) {
-		document.querySelectorAll(
-			'.menu-type-reader.pdf, .menu-type-reader.epub, .menu-type-reader.snapshot'
-		).forEach(el => el.hidden = true);
-		document.querySelectorAll('.menu-type-reader.' + subtype).forEach(el => el.hidden = false);
+	this.onReaderCmd = function (cmd) {
+		let reader = Zotero.Reader.getByTabID(Zotero_Tabs.selectedID);
+		reader.menuCmd(cmd);
 	};
-
+	
 	this.onFileMenuOpen = function () {
 		var active = false;
 		try {
@@ -255,7 +239,7 @@ const ZoteroStandalone = new function() {
 			});
 			
 			for (var i = 0; i<itemTypes.length; i++) {
-				var menuitem = document.createXULElement("menuitem");
+				var menuitem = document.createElement("menuitem");
 				menuitem.setAttribute("label", itemTypes[i].localized);
 				menuitem.setAttribute("tooltiptext", "");
 				let type = itemTypes[i].id;
@@ -268,7 +252,7 @@ const ZoteroStandalone = new function() {
 			
 			// add separator between sets
 			if(j !== typeSets.length-1) {
-				addMenu.appendChild(document.createXULElement("menuseparator"));
+				addMenu.appendChild(document.createElement("menuseparator"));
 			}
 		}
 	}
@@ -397,12 +381,10 @@ const ZoteroStandalone = new function() {
 
 		var reader = Zotero.Reader.getByTabID(Zotero_Tabs.selectedID);
 		if (reader) {
-			if (['pdf', 'epub'].includes(reader.type)) {
-				this.updateMenuItemEnabled('go-menuitem-first-page', reader.canNavigateToFirstPage);
-				this.updateMenuItemEnabled('go-menuitem-last-page', reader.canNavigateToLastPage);
-			}
-			this.updateMenuItemEnabled('go-menuitem-back', reader.canNavigateBack);
-			this.updateMenuItemEnabled('go-menuitem-forward', reader.canNavigateForward);
+			this.updateMenuItemEnabled('go-menuitem-first-page', reader.allowNavigateFirstPage());
+			this.updateMenuItemEnabled('go-menuitem-last-page', reader.allowNavigateLastPage());
+			this.updateMenuItemEnabled('go-menuitem-back', reader.allowNavigateBack());
+			this.updateMenuItemEnabled('go-menuitem-forward', reader.allowNavigateForward());
 		}
 	};
 	
@@ -411,26 +393,19 @@ const ZoteroStandalone = new function() {
 		// PDF Reader
 		var reader = Zotero.Reader.getByTabID(Zotero_Tabs.selectedID);
 		if (reader) {
-			if (reader.type === 'pdf' || reader.type === 'epub') {
-				this.updateMenuItemCheckmark('view-menuitem-no-spreads', reader.spreadMode === 0);
-				this.updateMenuItemCheckmark('view-menuitem-odd-spreads', reader.spreadMode === 1);
-				this.updateMenuItemCheckmark('view-menuitem-even-spreads', reader.spreadMode === 2);
-			}
-			if (reader.type === 'pdf') {
-				this.updateMenuItemCheckmark('view-menuitem-hand-tool', reader.toolType === 'hand');
-				this.updateMenuItemCheckmark('view-menuitem-vertical-scrolling', reader.scrollMode === 0);
-				this.updateMenuItemCheckmark('view-menuitem-horizontal-scrolling', reader.scrollMode === 1);
-				this.updateMenuItemCheckmark('view-menuitem-wrapped-scrolling', reader.scrollMode === 2);
-				this.updateMenuItemCheckmark('view-menuitem-zoom-auto', reader.zoomAutoEnabled);
-				this.updateMenuItemCheckmark('view-menuitem-zoom-page-width', reader.zoomPageWidthEnabled);
-				this.updateMenuItemCheckmark('view-menuitem-zoom-page-height', reader.zoomPageHeightEnabled);
-			}
-			else if (reader.type === 'epub') {
-				this.updateMenuItemCheckmark('view-menuitem-scrolled', reader.flowMode === 'scrolled');
-				this.updateMenuItemCheckmark('view-menuitem-paginated', reader.flowMode === 'paginated');
-			}
-			this.updateMenuItemCheckmark('view-menuitem-split-vertically', reader.splitType === 'vertical');
-			this.updateMenuItemCheckmark('view-menuitem-split-horizontally', reader.splitType === 'horizontal');
+			var { state } = reader;
+			this.updateMenuItemCheckmark('view-menuitem-vertical-scrolling', state.scrollMode == 0);
+			this.updateMenuItemCheckmark('view-menuitem-horizontal-scrolling', state.scrollMode == 1);
+			this.updateMenuItemCheckmark('view-menuitem-wrapped-scrolling', state.scrollMode == 2);
+			this.updateMenuItemCheckmark('view-menuitem-no-spreads', state.spreadMode == 0);
+			this.updateMenuItemCheckmark('view-menuitem-odd-spreads', state.spreadMode == 1);
+			this.updateMenuItemCheckmark('view-menuitem-even-spreads', state.spreadMode == 2);
+			this.updateMenuItemCheckmark('view-menuitem-hand-tool', reader.isHandToolActive());
+			this.updateMenuItemCheckmark('view-menuitem-zoom-auto', reader.isZoomAutoActive());
+			this.updateMenuItemCheckmark('view-menuitem-zoom-page-width', reader.isZoomPageWidthActive());
+			this.updateMenuItemCheckmark('view-menuitem-zoom-page-height', reader.isZoomPageHeightActive());
+			this.updateMenuItemCheckmark('view-menuitem-split-vertically', reader.isSplitVerticallyActive());
+			this.updateMenuItemCheckmark('view-menuitem-split-horizontally', reader.isSplitHorizontallyActive());
 		}
 	
 		// Layout mode
@@ -645,68 +620,31 @@ const ZoteroStandalone = new function() {
 	};
 	
 	
-	this.promptForRestartInSafeMode = async function () {
-		let ps = Services.prompt;
-		let [title, description] = await document.l10n.formatValues([
-			'restart-in-safe-mode-dialog-title',
-			'restart-in-safe-mode-dialog-description'
-		]);
-		let buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_IS_STRING
-			+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_CANCEL;
-		let index = ps.confirmEx(
-			null,
-			title,
-			description,
-			buttonFlags,
-			Zotero.getString('general.restartNow'),
-			null, null, null, {}
-		);
-		
-		if (index == 0) {
-			Services.startup.restartInSafeMode(Ci.nsIAppStartup.eAttemptQuit);
-		}
-	};
-	
-	
 	this.updateAddonsPane = function (doc) {
-		//var rootWindow = doc.ownerGlobal.windowRoot.ownerGlobal;
-		
-		// Update message when no plugins installed
-		setTimeout(() => {
-			var emptyListMessage = doc.getElementById('empty-list-message');
-			emptyListMessage.innerHTML = Zotero.Utilities.htmlSpecialChars(
-					Zotero.getString("addons.emptyListMessage")
-				).replace(
-					/\[([^\]]+)]/,
-					`<a href="${ZOTERO_CONFIG.PLUGINS_URL}">$1</a>`
+		// Unsigned add-on warnings are hidden by default in extensions.css (via style rules added
+		// by fetch_xulrunner.sh), but allow other warnings
+		function updateExtensions () {
+			var addonList = doc.getElementById('addon-list');
+			
+			for (let i = 0; i < addonList.itemCount; i++) {
+				let richListItem = addonList.getItemAtIndex(i);
+				let container = doc.getAnonymousElementByAttribute(
+					richListItem, 'anonid', 'warning-container'
 				);
-			emptyListMessage.addEventListener('click', (event) => {
-				Zotero.launchURL(ZOTERO_CONFIG.PLUGINS_URL);
-				event.preventDefault();
-				event.stopPropagation();
-			});
-		});
-		
-		// Make our own removal prompt instead of using BrowserAddonUI.promptRemoveExtension() from
-		// browser-addons.js
-		doc.ownerGlobal.promptRemoveExtension = function (addon) {
-			var { name } = addon;
-			var ps = Services.prompt;
-			var buttonFlags = ps.BUTTON_POS_0 * ps.BUTTON_TITLE_IS_STRING
-				+ ps.BUTTON_POS_1 * ps.BUTTON_TITLE_CANCEL;
-			var result = ps.confirmEx(
-				doc.ownerGlobal,
-				Zotero.getString('addons.remove.title', name),
-				Zotero.getString('addons.remove.text', [name, Zotero.appName]),
-				buttonFlags,
-				Zotero.getString('general.remove'),
-				null,
-				null,
-				"",
-				{}
-			);
-			return { remove: result === 0, report: null };
-		};
+				if (container) {
+					let link = doc.getAnonymousElementByAttribute(
+						richListItem, 'anonid', 'warning-link'
+					);
+					if (link) {
+						if (!link.href.includes('unsigned-addons')) {
+							container.classList.add('allowed-warning');
+						}
+					}
+				}
+			}
+		}
+		doc.getElementById('category-extension').onclick = updateExtensions;
+		setTimeout(updateExtensions);
 	}
 	
 	/**
@@ -737,7 +675,7 @@ const ZoteroStandalone = new function() {
 	 * Checks for updates
 	 */
 	this.checkForUpdates = function() {
-		window.open('chrome://zotero/content/update/updates.xhtml', 'updateChecker', 'chrome,centerscreen');
+		window.open('chrome://mozapps/content/update/updates.xul', 'updateChecker', 'chrome,centerscreen');
 	}
 	
 	/**
@@ -818,7 +756,7 @@ ZoteroStandalone.DebugOutput = {
 								return;
 							}
 							req.channel.notificationCallbacks = {
-								onProgress: function (request, progress, progressMax) {},
+								onProgress: function (request, context, progress, progressMax) {},
 								
 								// nsIInterfaceRequestor
 								getInterface: function (iid) {
@@ -898,23 +836,21 @@ ZoteroStandalone.DebugOutput = {
 	
 	
 	view: function () {
-		Zotero.openInViewer("chrome://zotero/content/debugViewer.html", {
-			onLoad(doc) {
-				var submitted = false;
-				doc.querySelector('#submit-button').addEventListener('click', function (event) {
-					submitted = true;
-				});
-				doc.querySelector('#clear-button').addEventListener('click', function (event) {
+		Zotero.openInViewer("chrome://zotero/content/debugViewer.html", function (doc) {
+			var submitted = false;
+			doc.querySelector('#submit-button').addEventListener('click', function (event) {
+				submitted = true;
+			});
+			doc.querySelector('#clear-button').addEventListener('click', function (event) {
+				Zotero.Debug.clear();
+			});
+			// If output has been submitted, disable logging when window is closed
+			doc.defaultView.addEventListener('unload', function (event) {
+				if (submitted) {
+					Zotero.Debug.setStore(false);
 					Zotero.Debug.clear();
-				});
-				// If output has been submitted, disable logging when window is closed
-				doc.defaultView.addEventListener('unload', function (event) {
-					if (submitted) {
-						Zotero.Debug.setStore(false);
-						Zotero.Debug.clear();
-					}
-				});
-			}
+				}
+			});
 		});
 	},
 	
@@ -953,10 +889,7 @@ ZoteroStandalone.DebugOutput = {
 
 
 function toJavaScriptConsole() {
-	// We need the DevTools' built-in require() for this
-	const { require } = ChromeUtils.import("resource://devtools/shared/loader/Loader.jsm");
-	const { BrowserConsoleManager } = require("resource://devtools/client/webconsole/browser-console-manager.js");
-	BrowserConsoleManager.openBrowserConsoleOrFocus();
+	openWindowByType('chrome://global/content/console.xul', 'global:console');
 }
 
 function openRunJSWindow() {
@@ -969,7 +902,7 @@ function openRunJSWindow() {
 
 function openStyleEditor() {
 	openWindowByType(
-		'chrome://zotero/content/tools/csledit.xhtml',
+		'chrome://zotero/content/tools/csledit.xul',
 		'zotero:style-editor',
 		'chrome,width=950,height=700,resizable'
 	);
@@ -977,7 +910,7 @@ function openStyleEditor() {
 
 function openScaffold() {
 	openWindowByType(
-		'chrome://scaffold/content/scaffold.xhtml',
+		'chrome://scaffold/content/scaffold.xul',
 		'zotero:scaffold',
 		'chrome,resizable'
 	);
@@ -1007,7 +940,7 @@ const gXPInstallObserver = {
 				Zotero.alert(
 					null,
 					Zotero.getString("standalone.addonInstallationFailed.title"),
-					Zotero.getString("standalone.addonInstallationFailed.body", [installs[0].name || installs[0].file.path]));
+					Zotero.getString("standalone.addonInstallationFailed.body", installs[0].name));
 				break;
 			/*case "addon-install-started":
 			case "addon-install-complete":*/
@@ -1019,6 +952,31 @@ const gXPInstallObserver = {
 function openUILinkIn(url) {
 	ZoteroPane.loadURI(url);
 }
+
+// Support context menus on HTML text boxes
+//
+// Adapted from editMenuOverlay.js in Fx68
+window.addEventListener("contextmenu", e => {
+	const HTML_NS = "http://www.w3.org/1999/xhtml";
+	let needsContextMenu =
+		e.target.ownerDocument == document &&
+		!e.defaultPrevented &&
+		e.target.parentNode.nodeName != "moz-input-box" &&
+		((["textarea", "input"].includes(e.target.localName) &&
+			e.target.namespaceURI == HTML_NS) ||
+			e.target.closest("search-textbox"));
+	
+	if (!needsContextMenu) {
+		return;
+	}
+	
+	let popup = document.getElementById("contentAreaContextMenu");
+	popup.openPopupAtScreen(e.screenX, e.screenY, true);
+	// Don't show any other context menu at the same time. There can be a
+	// context menu from an ancestor too but we only want to show this one.
+	e.preventDefault();
+});
+
 
 window.addEventListener("load", function(e) { ZoteroStandalone.onLoad(e); }, false);
 window.addEventListener("unload", function(e) { ZoteroStandalone.onUnload(e); }, false);

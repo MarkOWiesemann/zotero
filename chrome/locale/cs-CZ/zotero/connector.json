@@ -5,9 +5,6 @@
   "general_moreInfo": {
     "message": "Více informací..."
   },
-  "general_needHelp": {
-    "message": "Potřebujete pomoc?"
-  },
   "general_done": {
     "message": "Hotovo"
   },
@@ -25,9 +22,6 @@
   },
   "general_cancel": {
     "message": "Zrušit"
-  },
-  "general_pleaseWait": {
-    "message": "Čekejte prosím..."
   },
   "general_copyToClipboard": {
     "message": "Kopírovat do schránky"

@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Radera källa...">
 <!ENTITY zotero.toolbar.newLibrary.label "Nytt bibliotek">
 <!ENTITY zotero.toolbar.newCollection.label "Ny samling...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Markera matning som läst">
 <!ENTITY zotero.toolbar.newGroup "Ny grupp...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Ny undersamling...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Ny sparad sökning...">
@@ -105,15 +106,15 @@
 <!ENTITY zotero.toolbar.feeds.new "Nytt flöde">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Från URL…">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "Från OPML…">
-<!ENTITY zotero.toolbar.feeds.edit "Redigera flöde…">
+<!ENTITY zotero.toolbar.feeds.refresh "Uppdatera matning">
+<!ENTITY zotero.toolbar.feeds.edit "Redigera matning…">
 
 <!ENTITY zotero.item.add "Lägg till">
 <!ENTITY zotero.item.attachment.file.show "Visa fil">
 <!ENTITY zotero.item.textTransform "Omvandla text">
 <!ENTITY zotero.item.textTransform.titlecase "Engelsk Titelskrivning">
 <!ENTITY zotero.item.textTransform.sentencecase "Vanlig versalisering">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Skifta för-/efternamn">
 <!ENTITY zotero.item.viewOnline "Visa online">
 <!ENTITY zotero.item.copyAsURL "Kopiera som URL">
 <!ENTITY zotero.item.deletePermanently "Radera permanent…">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Ange färg…">
 <!ENTITY zotero.tagSelector.renameTag "Ändra namn på etikett...">
 <!ENTITY zotero.tagSelector.deleteTag "Radera etikett...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "Ange etikettens färg och plats">
 <!ENTITY zotero.tagColorChooser.color "Färg:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Importera">
 <!ENTITY zotero.import.whereToImportFrom "Varifrån vill du importera?">
 <!ENTITY zotero.import.source.file "En fil (BibTeX, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "Importerar…">
 <!ENTITY zotero.import.database "Databas">
 <!ENTITY zotero.import.lastModified "Senast ändrad">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Lägg importerade samlingar och källor i en ny samling">
 <!ENTITY zotero.import.fileHandling "Filhantering">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Exportera...">
 <!ENTITY zotero.exportOptions.format.label "Format:">
@@ -265,11 +264,11 @@
 <!ENTITY zotero.proxy.recognized.disable.label "Skicka inte automatiskt vidare frågor genom tidigare funna proxies">
 <!ENTITY zotero.proxy.recognized.ignore.label "Ignorera">
 
-<!ENTITY zotero.feedSettings.title "Flödesinställningar">
+<!ENTITY zotero.feedSettings.title "Matningsinställningar">
 <!ENTITY zotero.feedSettings.saveButton.label "Spara">
 <!ENTITY zotero.feedSettings.url.label "URL:">
 <!ENTITY zotero.feedSettings.title.label "Titel:">
-<!ENTITY zotero.feedSettings.refresh.label1 "Uppdatera flöde varje">
+<!ENTITY zotero.feedSettings.refresh.label1 "Uppdatera matning varje">
 <!ENTITY zotero.feedSettings.refresh.label2 "timme(ar)">
 <!ENTITY zotero.feedSettings.cleanupUnreadAfter.label1 "Ta bort olästa flödesobjekt efter">
 <!ENTITY zotero.feedSettings.cleanupUnreadAfter.label2 "dag(ar)">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "Inga uppslag">
 <!ENTITY zotero.pdfReader.oddSpreads "Udda uppslag">
 <!ENTITY zotero.pdfReader.evenSpreads "Jämna uppslag">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zooma in">
 <!ENTITY zotero.pdfReader.zoomOut "Zooma ut">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Anpassa storlek automatiskt">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Anpassa till sidbredd">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Inställningar i Zotero">
 
-<!ENTITY zotero.preferences.helpButton.label "Hjälp">
-
 <!ENTITY zotero.preferences.default "Standardvärde:">
 <!ENTITY zotero.preferences.items "källor">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Allmänt">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "Filhantering">
 <!ENTITY zotero.preferences.automaticSnapshots "Ta automatiskt lokala kopior när källor skapas av hemsidor">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Bifoga automatiskt associerade PDF:er och andra filer när källor sparas">
+<!ENTITY zotero.preferences.autoRecognizeFiles "hämta metadata automatiskt för PDF:er">
+<!ENTITY zotero.preferences.autoRenameFiles "Döp automatiskt om bilagefiler uifrån huvudpostens metadata">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Byt namn på länkade filer">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Öppna PDF:er med">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "Systemets standardval">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Ta automatiskt bort källor från papperskorgen som lagts dit för mer än">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "dagar sen">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Återställ filsynkroniseringshistorik">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Jämför alla bifogade filer med lagringstjänsten">
 <!ENTITY zotero.preferences.sync.reset "Återställ">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Återställ...">
 
 

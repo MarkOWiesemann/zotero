@@ -4,7 +4,6 @@ describe("Connector Server", function () {
 	Components.utils.import("resource://zotero-unit/httpd.js");
 	var win, connectorServerPath, testServerPath, httpd;
 	var testServerPort = 16213;
-	var snapshotHTML = "<html><head><title>Title</title><body>Body</body></html>";
 	
 	before(function* () {
 		this.timeout(20000);
@@ -25,16 +24,6 @@ describe("Connector Server", function () {
 		testServerPath = 'http://127.0.0.1:' + testServerPort;
 		httpd = new HttpServer();
 		httpd.start(testServerPort);
-		
-		httpd.registerPathHandler(
-			"/snapshot",
-			{
-				handle: function (request, response) {
-					response.setStatusLine(null, 200, "OK");
-					response.write(snapshotHTML);
-				}
-			}
-		);
 	});
 	
 	afterEach(function* () {
@@ -1018,7 +1007,7 @@ describe("Connector Server", function () {
 			let path = OS.Path.join(attachmentDirectory, item.attachmentFilename);
 			assert.isTrue(await OS.File.exists(path));
 			let contents = await Zotero.File.getContentsAsync(path);
-			assert.match(contents, /^<html><!--\n Page saved with SingleFile \n url:/);
+			assert.match(contents, /^<html style><!--\n Page saved with SingleFile \n url:/);
 		});
 
 		it("should override SingleFileZ from old connector in /saveItems", async function () {
@@ -1127,7 +1116,7 @@ describe("Connector Server", function () {
 			let path = OS.Path.join(attachmentDirectory, item.attachmentFilename);
 			assert.isTrue(await OS.File.exists(path));
 			let contents = await Zotero.File.getContentsAsync(path);
-			assert.match(contents, /^<html><!--\n Page saved with SingleFile \n url:/);
+			assert.match(contents, /^<html style><!--\n Page saved with SingleFile \n url:/);
 		});
 
 		it("should handle race condition with /saveItems", async function () {
@@ -1420,8 +1409,8 @@ describe("Connector Server", function () {
 						"Content-Type": "application/json"
 					},
 					body: JSON.stringify({
-						url: testServerPath + '/snapshot',
-						html: snapshotHTML
+						url: "http://example.com",
+						html: "<html><head><title>Title</title><body>Body</body></html>"
 					}),
 					successCodes: false
 				}
@@ -1656,7 +1645,7 @@ describe("Connector Server", function () {
 					},
 					body: JSON.stringify({
 						sessionID,
-						url: testServerPath + '/snapshot',
+						url: "http://example.com",
 						html: "<html><head><title>Title</title><body>Body</body></html>"
 					})
 				}
@@ -1828,7 +1817,7 @@ describe("Connector Server", function () {
 					},
 					body: JSON.stringify({
 						sessionID,
-						url: testServerPath + '/snapshot',
+						url: "http://example.com",
 						html: "<html><head><title>Title</title><body>Body</body></html>"
 					})
 				}
@@ -2460,7 +2449,8 @@ describe("Connector Server", function () {
 		
 		it('should import a style with application/vnd.citationstyles.style+xml content-type', function* () {
 			sinon.stub(Zotero.Styles, 'install').callsFake(function(style) {
-				var parser = new DOMParser(),
+				var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+					.createInstance(Components.interfaces.nsIDOMParser),
 				doc = parser.parseFromString(style, "application/xml");
 				
 				return Zotero.Promise.resolve({
@@ -2488,7 +2478,8 @@ describe("Connector Server", function () {
 		
 		it('should accept text/plain request with X-Zotero-Connector-API-Version or Zotero-Allowed-Request', async function () {
 			sinon.stub(Zotero.Styles, 'install').callsFake(function(style) {
-				var parser = new DOMParser(),
+				var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+					.createInstance(Components.interfaces.nsIDOMParser),
 				doc = parser.parseFromString(style, "application/xml");
 				
 				return Zotero.Promise.resolve({
@@ -2659,7 +2650,7 @@ describe("Connector Server", function () {
 		});
 	});
 	
-	describe('/connector/request', function () {
+	describe.skip('/connector/request', function () {
 		let endpoint;
 		
 		before(function () {

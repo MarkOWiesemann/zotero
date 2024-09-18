@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "ជម្រើសអាទិភាពហ្ស៊ូតេរ៉ូ">
 
-<!ENTITY zotero.preferences.helpButton.label "ជំនួយ">
-
 <!ENTITY zotero.preferences.default "លំនាំដើម:">
 <!ENTITY zotero.preferences.items "ឯកសារ">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "ទូទៅ">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "File Handling">
 <!ENTITY zotero.preferences.automaticSnapshots "ថតយកអត្ថបទចេញពីគេហទំព័រដោយស្វ័យប្រវត្តិ">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "ភ្ជាប់មកជាមួយដោយស្វ័យប្រវត្តិនូវឯកសារភីឌីអែហ្វ និង ឯកសារដទៃទៀត ខណៈពេលទាញរក្សាឯកសារទុក">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Automatically retrieve metadata for PDFs">
+<!ENTITY zotero.preferences.autoRenameFiles "Automatically rename attachment files using parent metadata">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Rename linked files">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Open PDFs using">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "System Default">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "លុបឯកសារចេញពីធុងសំរាមដោយស្វ័យប្រវត្តិ កាលណាត្រូវបានលុបយូរ​ជាង">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "ថ្ងៃកន្លងហើយ">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "កំណត់រៀបចំប្រវត្តិឯកសារសមកាលកម្ម">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Compare all attachment files with the storage service">
 <!ENTITY zotero.preferences.sync.reset "កំណត់ជាថ្មី">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Reset…">
 
 

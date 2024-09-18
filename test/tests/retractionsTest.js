@@ -3,7 +3,7 @@ describe("Retractions", function () {
 	var win;
 	var zp;
 	var checkQueueItemsStub;
-	var retractedDOI = '10.1056/NEJMoa1200303'; // mixed case
+	var retractedDOI = '10.1039/C3AN01547E';
 	
 	before(async function () {
 		userLibraryID = Zotero.Libraries.userLibraryID;
@@ -275,24 +275,17 @@ describe("Retractions", function () {
 		it("should show banner when retracted item is added", async function () {
 			assert.isFalse(bannerShown());
 			await createRetractedItem();
-			do {
-				await delay(10);
-			}
-			while (!bannerShown());
+			assert.isTrue(bannerShown());
 		});
 		
 		it("should show banner when retracted item with DOI in Extra is added", async function () {
 			assert.isFalse(bannerShown());
 			await createRetractedItemWithExtraDOI();
-			do {
-				await delay(10);
-			}
-			while (!bannerShown());
+			assert.isTrue(bannerShown());
 		});
 		
 		it("shouldn't show banner when item in trash is added", async function () {
 			await createRetractedItem({ deleted: true });
-			await delay(50);
 			assert.isFalse(bannerShown());
 		});
 	});

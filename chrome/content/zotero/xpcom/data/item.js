@@ -216,12 +216,12 @@ Zotero.Item.prototype._setParentKey = function() {
 // Public Zotero.Item methods
 //
 //////////////////////////////////////////////////////////////////////////////
-/**
+/*
  * Retrieves an itemData field value
  *
  * @param {String|Integer} field fieldID or fieldName
- * @param {Boolean} [unformatted] Skip formatting of multipart date fields and
- * 		omit bidi control characters
+ * @param {Boolean} [unformatted] Skip any special processing of DB value
+ *   (e.g. multipart date field)
  * @param {Boolean} includeBaseMapped If true and field is a base field, returns
  *   value of type-specific field instead
  *   (e.g. 'label' for 'publisher' in 'audioRecording')
@@ -238,17 +238,11 @@ Zotero.Item.prototype.getField = function(field, unformatted, includeBaseMapped)
 	if (field === 'firstCreator' && !this._id) {
 		// Hack to get a firstCreator for an unsaved item
 		let creatorsData = this.getCreators(true);
-		return Zotero.Items.getFirstCreatorFromData(this.itemTypeID, creatorsData,
-			{ omitBidiIsolates: !!unformatted });
+		return Zotero.Items.getFirstCreatorFromData(this.itemTypeID, creatorsData);
 	} else if (field === 'id' || this.ObjectsClass.isPrimaryField(field)) {
 		var privField = '_' + field;
-		let value = this[privField];
-		// Bidi isolates
-		if (unformatted && field === 'firstCreator') {
-			value = value.replace(/[\u2068\u2069]/g, '');
-		}
-		//Zotero.debug('Returning ' + (value ? value : '') + ' (typeof ' + typeof value + ')');
-		return value;
+		//Zotero.debug('Returning ' + (this[privField] ? this[privField] : '') + ' (typeof ' + typeof this[privField] + ')');
+		return this[privField];
 	} else if (field == 'year') {
 		return this.getField('date', true, true).substr(0,4);
 	}
@@ -1419,9 +1413,6 @@ Zotero.Item.prototype._saveData = Zotero.Promise.coroutine(function* (env) {
 						]
 					);
 				}
-				else {
-					Zotero.logError("Current username not found -- not setting group item user");
-				}
 			}
 		}
 	}
@@ -1914,8 +1905,8 @@ Zotero.Item.prototype._saveData = Zotero.Promise.coroutine(function* (env) {
 		if (!parentItem.isFileAttachment()) {
 			throw new Error("Annotation parent must be a file attachment");
 		}
-		if (!['application/pdf', 'application/epub+zip', 'text/html'].includes(parentItem.attachmentContentType)) {
-			throw new Error("Annotation parent must be a PDF, EPUB, or HTML snapshot");
+		if (parentItem.attachmentContentType != 'application/pdf') {
+			//throw new Error("Annotation parent must be a PDF");
 		}
 		let type = this._getLatestField('annotationType');
 		let typeID = Zotero.Annotations[`ANNOTATION_TYPE_${type.toUpperCase()}`];
@@ -2428,14 +2419,6 @@ Zotero.Item.prototype.isPDFAttachment = function () {
 
 
 /**
- * @return {Boolean} - Returns true if item is a stored or linked EPUB attachment
- */
-Zotero.Item.prototype.isEPUBAttachment = function () {
-	return this.isFileAttachment() && this.attachmentContentType == 'application/epub+zip';
-};
-
-
-/**
  * Returns number of child attachments of item
  *
  * @param	{Boolean}	includeTrashed		Include trashed child items in count
@@ -2809,9 +2792,6 @@ Zotero.Item.prototype.renameAttachmentFile = async function (newName, overwrite 
 				unique
 			}
 		);
-		if (newName === false) {
-			return -1;
-		}
 		let destPath = OS.Path.join(OS.Path.dirname(origPath), newName);
 		
 		await this.relinkAttachmentFile(destPath);
@@ -2974,11 +2954,15 @@ Zotero.Item.prototype.getLocalFileURL = function() {
 	if (!this.isAttachment()) {
 		throw ("getLocalFileURL() can only be called on attachment items");
 	}
-	var file = this.getFilePath();
+	
+	var file = this.getFile();
 	if (!file) {
 		return false;
 	}
-	return Zotero.File.pathToFileURI(file);
+	
+	var nsIFPH = Components.classes["@mozilla.org/network/protocol;1?name=file"]
+			.getService(Components.interfaces.nsIFileProtocolHandler);
+	return nsIFPH.getURLSpecFromFile(file);
 }
 
 
@@ -3585,10 +3569,24 @@ Zotero.defineProperty(Zotero.Item.prototype, 'attachmentText', {
 					let data = JSON.parse(json);
 					str = data.text;
 				}
-				// Otherwise extract text
+				// Otherwise extract text to temporary file and read that
 				else if (contentType == 'application/pdf') {
-					let { text } = await Zotero.PDFWorker.getFullText(this.id);
-					str = text;
+					let tmpCacheFile = OS.Path.join(
+						Zotero.getTempDirectory().path, Zotero.Utilities.randomString()
+					);
+					let { exec, args } = Zotero.FullText.getPDFConverterExecAndArgs();
+					args.push(
+						'-nopgbrk',
+						path,
+						tmpCacheFile
+					);
+					await Zotero.Utilities.Internal.exec(exec, args);
+					if (!await OS.File.exists(tmpCacheFile)) {
+						Zotero.logError("Cache file not found after running PDF converter");
+						return '';
+					}
+					str = await Zotero.File.getContentsAsync(tmpCacheFile);
+					await OS.File.remove(tmpCacheFile);
 				}
 				else {
 					Zotero.logError("Unsupported cached file type in .attachmentText");
@@ -3633,18 +3631,13 @@ Zotero.defineProperty(Zotero.Item.prototype, 'attachmentDataURI', {
 			return '';
 		}
 		let buf = await OS.File.read(path, {});
-		buf = new Uint8Array(buf).buffer;
-		return new Promise((resolve, reject) => {
-			let blob = new Blob([buf], { type: this.attachmentContentType });
-			let reader = new FileReader();
-			reader.onloadend = function () {
-				resolve(reader.result);
-			}
-			reader.onerror = function (e) {
-				reject("FileReader error: " + e);
-			};
-			reader.readAsDataURL(blob);
-		});
+		let bytes = new Uint8Array(buf);
+		let binary = '';
+		let len = bytes.byteLength;
+		for (let i = 0; i < len; i++) {
+			binary += String.fromCharCode(bytes[i]);
+		}
+		return 'data:' + this.attachmentContentType + ';base64,' + btoa(binary);
 	}
 });
 
@@ -3971,7 +3964,9 @@ Zotero.Item.prototype.getAnnotations = function (includeTrashed) {
 	}
 	var ids = rows.map(row => row.itemID);
 	this._annotations[cacheKey] = ids;
-	return Zotero.Items.get(ids);
+	return Zotero.Items.get(ids)
+		// Filter out underline and text annotations in Zotero 6
+		.filter(x => !['underline', 'text'].includes(x.annotationType));
 };
 
 
@@ -3979,14 +3974,23 @@ Zotero.Item.prototype.getAnnotations = function (includeTrashed) {
  * Determine if the item is a PDF attachment that exists on disk and contains
  * embedded markup annotations.
  *
- * @return {Promise<Boolean>} Rejects if file does not exist on disk
+ * @return {Promise<Boolean>}
  */
 Zotero.Item.prototype.hasEmbeddedAnnotations = async function () {
 	if (!this.isPDFAttachment()) {
 		return false;
 	}
 
-	return Zotero.PDFWorker.hasAnnotations(this.id, true);
+	let path = await this.getFilePathAsync();
+	if (!path) {
+		return false;
+	}
+
+	let contents = await Zotero.File.getContentsAsync(path);
+	// Check for "markup" annotations per the PDF spec
+	// https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf, p. 390
+	let re = /\s\/Subtype\s+\/(Text|FreeText|Line|Square|Circle|Polygon|PolyLine|Highlight|Underline|Squiggly|StrikeOut|Stamp|Caret|Ink|FileAttachment|Sound|Redact)\s/;
+	return re.test(contents);
 };
 
 

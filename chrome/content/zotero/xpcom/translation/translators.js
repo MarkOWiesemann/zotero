@@ -37,9 +37,6 @@ Zotero.Translators = new function() {
 	this.TRANSLATOR_ID_MARKDOWN_AND_RICH_TEXT = 'a45eca67-1ee8-45e5-b4c6-23fb8a852873';
 	this.TRANSLATOR_ID_NOTE_MARKDOWN = '1412e9e2-51e1-42ec-aa35-e036a895534b';
 	this.TRANSLATOR_ID_NOTE_HTML = '897a81c2-9f60-4bec-ae6b-85a5030b8be5';
-	this.TRANSLATOR_ID_RDF = '5e3ad958-ac79-463d-812b-a86a9235c28f';
-	
-	this._translatorsHash = null;
 	
 	/**
 	 * Initializes translator cache, loading all translator metadata into memory
@@ -268,7 +265,6 @@ Zotero.Translators = new function() {
 	
 	this.reinit = async function (options = {}) {
 		await this.init(Object.assign({}, options, { reinit: true }));
-		this._translatorsHash = null;
 		await Zotero.QuickCopy.init();
 	};
 	
@@ -329,21 +325,6 @@ Zotero.Translators = new function() {
 			throw new Error("Invalid or missing translator metadata JSON object in " + OS.Path.basename(path));
 		}
 	}
-
-	/**
-	 * Gets a hash of all translators (to check whether Connector needs an update)
-	 */
-	this.getTranslatorsHash = async function () {
-		if (this._translatorsHash) return this._translatorsHash;
-		await this.init();
-		const translators = await this.getAll();
-		let hashString = "";
-		for (let translator of translators) {
-			hashString += `${translator.translatorID}:${translator.lastUpdated},`;
-		}
-		this._translatorsHash = Zotero.Utilities.Internal.md5(hashString);
-		return this._translatorsHash;
-	};
 	
 	/**
 	 * Gets the translator that corresponds to a given ID

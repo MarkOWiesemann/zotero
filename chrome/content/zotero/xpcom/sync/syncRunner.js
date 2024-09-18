@@ -32,6 +32,7 @@ if (!Zotero.Sync) {
 // Initialized as Zotero.Sync.Runner in zotero.js
 Zotero.Sync.Runner_Module = function (options = {}) {
 	const stopOnError = false;
+	const HTML_NS = 'http://www.w3.org/1999/xhtml';
 	
 	Zotero.defineProperty(this, 'enabled', {
 		get: () => {
@@ -1214,54 +1215,62 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 							   .getService(Components.interfaces.nsIWindowMediator);
 							var lastWin = wm.getMostRecentWindow("navigator:browser");
 							
-							// Open long tag fixer for library we're syncing
-							let oldTagIDs = yield Zotero.Tags.getLongTagsInLibrary(object.libraryID);
-							
-							for (let oldTagID of oldTagIDs) {
-								let oldTag = Zotero.Tags.getName(oldTagID);
-								let dataOut = { result: null };
-								lastWin.openDialog(
-									'chrome://zotero/content/longTagFixer.xhtml',
-									'',
-									'chrome,modal,centerscreen',
-									{ oldTag, isLongTag: true },
-									dataOut
-								);
-								// If dialog was cancelled, stop
-								if (!dataOut.result) {
-									return;
-								}
-								const itemIDs = yield Zotero.Tags.getTagItems(object.libraryID, oldTagID);
-
-								switch (dataOut.result.op) {
+							// Open long tag fixer for every long tag in every editable library we're syncing
+							var editableLibraries = options.libraries
+								.filter(x => Zotero.Libraries.get(x).editable);
+							for (let libraryID of editableLibraries) {
+								let oldTagIDs = yield Zotero.Tags.getLongTagsInLibrary(libraryID);
+								for (let oldTagID of oldTagIDs) {
+									let oldTag = Zotero.Tags.getName(oldTagID);
+									let dataOut = { result: null };
+									lastWin.openDialog(
+										'chrome://zotero/content/longTagFixer.xul',
+										'',
+										'chrome,modal,centerscreen',
+										oldTag,
+										dataOut
+									);
+									// If dialog was cancelled, stop
+									if (!dataOut.result) {
+										return;
+									}
+									switch (dataOut.result.op) {
 									case 'split':
-										yield Zotero.DB.executeTransaction(async function () {
-											for (let itemID of itemIDs) {
-												let item = await Zotero.Items.getAsync(itemID);
-												let tagType = item.getTagType(oldTag);
-												for (let tag of dataOut.result.tags) {
-													item.addTag(tag, tagType);
+										for (let libraryID of editableLibraries) {
+											let itemIDs = yield Zotero.Tags.getTagItems(libraryID, oldTagID);
+											yield Zotero.DB.executeTransaction(function* () {
+												for (let itemID of itemIDs) {
+													let item = yield Zotero.Items.getAsync(itemID);
+													for (let tag of dataOut.result.tags) {
+														item.addTag(tag);
+													}
+													item.removeTag(oldTag);
+													yield item.save();
 												}
-												item.removeTag(oldTag);
-												await item.save();
-											}
-											await Zotero.Tags.purge(oldTagID);
-										});
+												yield Zotero.Tags.purge(oldTagID);
+											});
+										}
 										break;
 									
 									case 'edit':
-										yield Zotero.DB.executeTransaction(async function () {
-											for (let itemID of itemIDs) {
-												let item = await Zotero.Items.getAsync(itemID);
-												item.replaceTag(oldTag, dataOut.result.tag);
-												await item.save();
-											}
-										});
+										for (let libraryID of editableLibraries) {
+											let itemIDs = yield Zotero.Tags.getTagItems(libraryID, oldTagID);
+											yield Zotero.DB.executeTransaction(function* () {
+												for (let itemID of itemIDs) {
+													let item = yield Zotero.Items.getAsync(itemID);
+													item.replaceTag(oldTag, dataOut.result.tag);
+													yield item.save();
+												}
+											});
+										}
 										break;
 									
 									case 'delete':
-										yield Zotero.Tags.removeFromLibrary(object.libraryID, oldTagID);
+										for (let libraryID of editableLibraries) {
+											yield Zotero.Tags.removeFromLibrary(libraryID, oldTagID);
+										}
 										break;
+									}
 								}
 							}
 							
@@ -1493,8 +1502,8 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 		}
 		
 		for (let [index, e] of errors.entries()) {
-			var box = doc.createXULElement('vbox');
-			var label = doc.createXULElement('label');
+			var box = doc.createElement('vbox');
+			var label = doc.createElement('label');
 			if (e.libraryID !== undefined) {
 				label.className = "zotero-sync-error-panel-library-name";
 				if (e.libraryID == 0) {
@@ -1506,18 +1515,18 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 				}
 				label.setAttribute('value', libraryName);
 			}
-			var content = doc.createXULElement('vbox');
-			var buttons = doc.createXULElement('hbox');
+			var content = doc.createElement('vbox');
+			var buttons = doc.createElement('hbox');
 			buttons.pack = 'end';
 			box.appendChild(label);
 			box.appendChild(content);
 			box.appendChild(buttons);
 			
 			if (e.dialogHeader) {
-				let header = doc.createXULElement('description');
+				let header = doc.createElement('description');
 				header.className = 'error-header';
-				header.setAttribute("control", `zotero-sync-error-panel-button-${index}`);
 				header.textContent = e.dialogHeader;
+				header.setAttribute("control", `zotero-sync-error-panel-button-${index}`);
 				content.appendChild(header);
 			}
 			
@@ -1534,13 +1543,13 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 				msg = e.message;
 			}
 			
-			var desc = doc.createXULElement('description');
+			var desc = doc.createElement('description');
 			desc.textContent = msg;
+			desc.setAttribute("control", `zotero-sync-error-panel-button-${index}`);
 			// Make the text selectable
 			desc.setAttribute('style', '-moz-user-select: text; cursor: text');
 			content.appendChild(desc);
-			desc.setAttribute("control", `zotero-sync-error-panel-button-${index}`);
-
+			
 			/*// If not an error and there's no explicit button text, don't show
 			// button to report errors
 			if (e.errorType != 'error' && e.dialogButtonText === undefined) {
@@ -1558,8 +1567,7 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 					var buttonText = e.dialogButtonText;
 					var buttonCallback = e.dialogButtonCallback;
 				}
-				
-				// eslint-disable-next-line no-inner-declarations
+
 				function addEventHandlers(button, cb) {
 					button.addEventListener("click", () => {
 						cb();
@@ -1572,10 +1580,12 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 						panel.hidePopup();
 					});
 				}
+
+
 				
-				let button = doc.createXULElement('button');
-				button.setAttribute('label', buttonText);
+				let button = doc.createElement('button');
 				button.setAttribute("id", `zotero-sync-error-panel-button-${index}`);
+				button.setAttribute('label', buttonText);
 				addEventHandlers(button, buttonCallback);
 				buttons.appendChild(button);
 				
@@ -1584,10 +1594,10 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 					buttonText = e.dialogButton2Text;
 					buttonCallback = e.dialogButton2Callback;
 					
-					let button2 = doc.createXULElement('button');
+					let button2 = doc.createElement('button');
+					button2.setAttribute('label', buttonText);
 					button2.setAttribute("id", `zotero-sync-error-panel-button-${index}`);
 					button.removeAttribute("id");
-					button2.setAttribute('label', buttonText);
 					addEventHandlers(button2, buttonCallback);
 					buttons.insertBefore(button2, button);
 				}
@@ -1610,8 +1620,8 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 	 */
 	this.registerSyncStatus = function (tooltip) {
 		if (tooltip) {
-			_currentSyncStatusLabel = tooltip.querySelector('.sync-button-tooltip-status');
-			_currentLastSyncLabel = tooltip.querySelector('.sync-button-tooltip-last-sync');
+			_currentSyncStatusLabel = tooltip.firstChild.nextSibling;
+			_currentLastSyncLabel = tooltip.firstChild.nextSibling.nextSibling;
 			_currentTooltipMessages = tooltip.querySelector('.sync-button-tooltip-messages');
 		}
 		else {
@@ -1696,7 +1706,7 @@ Zotero.Sync.Runner_Module = function (options = {}) {
 		if (_tooltipMessages.length) {
 			_currentTooltipMessages.textContent = '';
 			for (let message of _tooltipMessages) {
-				let elem = _currentTooltipMessages.ownerDocument.createElement('p');
+				let elem = _currentTooltipMessages.ownerDocument.createElementNS(HTML_NS, 'p');
 				elem.textContent = message;
 				_currentTooltipMessages.appendChild(elem);
 			}

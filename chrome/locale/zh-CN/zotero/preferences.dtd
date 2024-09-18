@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Zotero 首选项">
 
-<!ENTITY zotero.preferences.helpButton.label "帮助">
-
 <!ENTITY zotero.preferences.default "默认:">
 <!ENTITY zotero.preferences.items "条目">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "常规">
 
-<!ENTITY zotero.preferences.interface "界面">
 <!ENTITY zotero.preferences.fileHandling "文件处理">
 <!ENTITY zotero.preferences.automaticSnapshots "从网页创建条目时自动抓取网页快照">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "保存条目时自动附加相关的 PDF 文档及其他文件">
+<!ENTITY zotero.preferences.autoRecognizeFiles "自动检索 PDF 的元数据">
+<!ENTITY zotero.preferences.autoRenameFiles "自动依父条目的元数据重命名附件文件">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "重命名链接的文件">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "打开 PDF 使用">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "系统默认">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "自动删除回收站内时间超过">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "天前的条目">
 
+<!ENTITY zotero.preferences.pdfReader "PDF 阅读器">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "显示标签页为">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "作者 - 年份 - 标题">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "标题 - 作者 - 年份">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "重置文件同步历史">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "比较存储服务中的所有附件文件">
 <!ENTITY zotero.preferences.sync.reset "重置">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "显示重置选项">
 <!ENTITY zotero.preferences.sync.reset.button "重置…">
 
 

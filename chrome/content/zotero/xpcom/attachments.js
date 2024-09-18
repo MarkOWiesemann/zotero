@@ -24,8 +24,6 @@
 */
 
 Zotero.Attachments = new function () {
-	const { HiddenBrowser } = ChromeUtils.import("chrome://zotero/content/HiddenBrowser.jsm");
-	
 	// Keep in sync with Zotero.Schema.integrityCheck() and this.linkModeToName()
 	this.LINK_MODE_IMPORTED_FILE = 0;
 	this.LINK_MODE_IMPORTED_URL = 1;
@@ -84,9 +82,9 @@ Zotero.Attachments = new function () {
 			throw new Error("parentItemID and collections cannot both be provided");
 		}
 		
-		var attachmentItem, newFile, destDir;
+		var attachmentItem, itemID, newFile, contentType, destDir;
 		try {
-			yield Zotero.DB.executeTransaction(async function () {
+			yield Zotero.DB.executeTransaction(function* () {
 				// Create a new attachment
 				attachmentItem = new Zotero.Item('attachment');
 				if (parentItemID) {
@@ -103,37 +101,37 @@ Zotero.Attachments = new function () {
 				if (collections) {
 					attachmentItem.setCollections(collections);
 				}
-				await attachmentItem.save(saveOptions);
+				yield attachmentItem.save(saveOptions);
 				
 				// Create directory for attachment files within storage directory
-				destDir = await this.createDirectoryForItem(attachmentItem);
+				destDir = yield this.createDirectoryForItem(attachmentItem);
 				
 				// Point to copied file
 				newFile = OS.Path.join(destDir, newName);
 				
 				// Copy or move file to unique filename, which automatically shortens long filenames
 				if (options.moveFile) {
-					const newFilePath = await Zotero.File.moveToUnique(file.path, newFile);
+					const newFilePath = yield Zotero.File.moveToUnique(file.path, newFile);
 					newFile = Zotero.File.pathToFile(newFilePath);
 				}
 				else {
 					newFile = Zotero.File.copyToUnique(file, newFile);
 				}
 				
-				await Zotero.File.setNormalFilePermissions(newFile.path);
+				yield Zotero.File.setNormalFilePermissions(newFile.path);
 				
 				if (!contentType) {
-					contentType = await Zotero.MIME.getMIMETypeFromFile(newFile);
+					contentType = yield Zotero.MIME.getMIMETypeFromFile(newFile);
 				}
 				attachmentItem.attachmentContentType = contentType;
 				if (charset) {
 					attachmentItem.attachmentCharset = charset;
 				}
 				attachmentItem.attachmentPath = newFile.path;
-				await attachmentItem.save(saveOptions);
+				yield attachmentItem.save(saveOptions);
 			}.bind(this));
 			try {
-				yield _postProcessFile(attachmentItem);
+				yield _postProcessFile(attachmentItem, newFile, contentType);
 			}
 			catch (e) {
 				Zotero.logError(e);
@@ -196,7 +194,7 @@ Zotero.Attachments = new function () {
 			saveOptions
 		});
 		try {
-			yield _postProcessFile(item);
+			yield _postProcessFile(item, file, contentType);
 		}
 		catch (e) {
 			Zotero.logError(e);
@@ -260,7 +258,7 @@ Zotero.Attachments = new function () {
 		var file = this.resolveRelativePath(path);
 		if (file && await OS.File.exists(file)) {
 			try {
-				await _postProcessFile(item);
+				await _postProcessFile(item, file, contentType);
 			}
 			catch (e) {
 				Zotero.logError(e);
@@ -307,7 +305,7 @@ Zotero.Attachments = new function () {
 		
 		var attachmentItem, itemID, destDir, newPath;
 		try {
-			yield Zotero.DB.executeTransaction(async function () {
+			yield Zotero.DB.executeTransaction(function* () {
 				// Create a new attachment
 				attachmentItem = new Zotero.Item('attachment');
 				if (libraryID) {
@@ -324,20 +322,20 @@ Zotero.Attachments = new function () {
 				// DEBUG: this should probably insert access date too so as to
 				// create a proper item, but at the moment this is only called by
 				// translate.js, which sets the metadata fields itself
-				itemID = await attachmentItem.save(saveOptions);
+				itemID = yield attachmentItem.save(saveOptions);
 				
 				var storageDir = Zotero.getStorageDirectory();
 				destDir = this.getStorageDirectory(attachmentItem);
-				await OS.File.removeDir(destDir.path);
+				yield OS.File.removeDir(destDir.path);
 				newPath = OS.Path.join(destDir.path, fileName);
 				// Copy single file to new directory
 				if (options.singleFile) {
-					await this.createDirectoryForItem(attachmentItem);
+					yield this.createDirectoryForItem(attachmentItem);
 					if (options.moveFile) {
-						await OS.File.move(file.path, newPath);
+						yield OS.File.move(file.path, newPath);
 					}
 					else {
-						await OS.File.copy(file.path, newPath);
+						yield OS.File.copy(file.path, newPath);
 					}
 				}
 				// Copy entire parent directory (for HTML snapshots)
@@ -346,7 +344,12 @@ Zotero.Attachments = new function () {
 				}
 			}.bind(this));
 			try {
-				yield _postProcessFile(attachmentItem);
+				yield _postProcessFile(
+					attachmentItem,
+					Zotero.File.pathToFile(newPath),
+					contentType,
+					charset
+				);
 			}
 			catch (e) {
 				Zotero.logError(e);
@@ -541,30 +544,39 @@ Zotero.Attachments = new function () {
 		}
 		
 		// Save using a hidden browser
-		var nativeHandlerImport = async function () {
-			let browser;
-			try {
-				browser = await HiddenBrowser.create(url, {
-					requireSuccessfulStatus: true,
-					docShell: { allowImages: true },
+		var nativeHandlerImport = function () {
+			return new Zotero.Promise(function (resolve, reject) {
+				var browser = Zotero.HTTP.loadDocuments(
+					url,
+					Zotero.Promise.coroutine(function* () {
+						try {
+							let attachmentItem = yield Zotero.Attachments.importFromDocument({
+								libraryID,
+								document: browser.contentDocument,
+								parentItemID,
+								title,
+								collections,
+								saveOptions
+							});
+							resolve(attachmentItem);
+						}
+						catch (e) {
+							Zotero.logError(e);
+							reject(e);
+						}
+						finally {
+							Zotero.Browser.deleteHiddenBrowser(browser);
+						}
+					}),
+					undefined,
+					(e) => {
+						reject(e);
+					},
+					true,
 					cookieSandbox,
-				});
-				return await Zotero.Attachments.importFromDocument({
-					libraryID,
-					browser,
-					parentItemID,
-					title,
-					collections,
-					saveOptions
-				});
-			}
-			catch (e) {
-				Zotero.logError(e);
-				throw e;
-			}
-			finally {
-				if (browser) HiddenBrowser.destroy(browser);
-			}
+					{ allowImages: true }
+				);
+			});
 		};
 		
 		// Save using remote web browser persist
@@ -719,7 +731,7 @@ Zotero.Attachments = new function () {
 			await Zotero.Notifier.commit(notifierQueue);
 		}
 		
-		await Zotero.FullText.queueItem(attachmentItem);
+		Zotero.Fulltext.queueItem(attachmentItem);
 		
 		return attachmentItem;
 	};
@@ -833,7 +845,11 @@ Zotero.Attachments = new function () {
 			saveOptions,
 		});
 		
-		if (Zotero.MIME.isTextType(document.contentType)) {
+		if (Zotero.Fulltext.isCachedMIMEType(contentType)) {
+			// No file, so no point running the PDF indexer
+			//Zotero.Fulltext.indexItems([itemID]);
+		}
+		else if (Zotero.MIME.isTextType(document.contentType)) {
 			yield Zotero.Fulltext.indexDocument(document, item.id);
 		}
 		
@@ -844,16 +860,15 @@ Zotero.Attachments = new function () {
 	/**
 	 * Save a snapshot from a Document
 	 *
-	 * @param {Object} options - 'libraryID', 'document', 'browser', 'parentItemID', 'forceTitle', 'collections'
+	 * @param {Object} options - 'libraryID', 'document', 'parentItemID', 'forceTitle', 'collections'
 	 * @param {Object} [options.saveOptions] - Options to pass to Zotero.Item::save()
 	 * @return {Promise<Zotero.Item>} - A promise for the created attachment item
 	 */
 	this.importFromDocument = Zotero.Promise.coroutine(function* (options) {
-		Zotero.debug('Importing attachment from ' + (options.document ? 'document' : 'browser'));
+		Zotero.debug('Importing attachment from document');
 		
 		var libraryID = options.libraryID;
 		var document = options.document;
-		var browser = options.browser;
 		var parentItemID = options.parentItemID;
 		var title = options.title;
 		var collections = options.collections;
@@ -863,14 +878,10 @@ Zotero.Attachments = new function () {
 			throw new Error("parentItemID and parentCollectionIDs cannot both be provided");
 		}
 		
-		if (!document && !browser) {
-			throw new Error("Either document or browser must be provided");
-		}
-		
-		var url = document ? document.location.href : browser.currentURI.spec;
-		title = title ? title : (document ? document.title : browser.contentTitle);
-		var contentType = document ? document.contentType : browser.documentContentType;
-		if (document ? Zotero.Attachments.isPDFJSDocument(document) : Zotero.Attachments.isPDFJSBrowser(browser)) {
+		var url = document.location.href;
+		title = title ? title : document.title;
+		var contentType = document.contentType;
+		if (Zotero.Attachments.isPDFJS(document)) {
 			contentType = "application/pdf";
 		}
 		
@@ -894,11 +905,11 @@ Zotero.Attachments = new function () {
 			
 			if ((contentType === 'text/html' || contentType === 'application/xhtml+xml')
 					// Documents from XHR don't work here
-					&& (browser || Zotero.Translate.DOMWrapper.unwrap(document) instanceof Document)) {
-				if (browser) {
+					&& Zotero.Translate.DOMWrapper.unwrap(document) instanceof Ci.nsIDOMDocument) {
+				if (document.defaultView.window) {
 					// If we have a full hidden browser, use SingleFile
-					Zotero.debug('Getting snapshot with HiddenBrowser.snapshot()');
-					let snapshotContent = yield HiddenBrowser.snapshot(browser);
+					Zotero.debug('Getting snapshot with snapshotDocument()');
+					let snapshotContent = yield Zotero.Utilities.Internal.snapshotDocument(document);
 
 					// Write main HTML file to disk
 					yield Zotero.File.putContentsAsync(tmpFile, snapshotContent);
@@ -928,7 +939,7 @@ Zotero.Attachments = new function () {
 			
 			var attachmentItem;
 			var destDir;
-			yield Zotero.DB.executeTransaction(async function () {
+			yield Zotero.DB.executeTransaction(function* () {
 				// Create a new attachment
 				attachmentItem = new Zotero.Item('attachment');
 				if (libraryID) {
@@ -950,13 +961,13 @@ Zotero.Attachments = new function () {
 					attachmentItem.setCollections(collections);
 				}
 				attachmentItem.attachmentPath = 'storage:' + fileName;
-				var itemID = await attachmentItem.save(saveOptions);
+				var itemID = yield attachmentItem.save(saveOptions);
+				
+				Zotero.Fulltext.queueItem(attachmentItem);
 				
 				destDir = this.getStorageDirectory(attachmentItem).path;
-				await OS.File.move(tmpDir, destDir);
+				yield OS.File.move(tmpDir, destDir);
 			}.bind(this));
-			
-			yield Zotero.FullText.queueItem(attachmentItem);
 		}
 		catch (e) {
 			Zotero.debug(e, 1);
@@ -1011,7 +1022,9 @@ Zotero.Attachments = new function () {
 
 		// If no title was provided, pull it from the document
 		if (!title) {
-			let parser = new DOMParser();
+			let parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+				.createInstance(Components.interfaces.nsIDOMParser);
+			parser.init(null, Services.io.newURI(url));
 			let doc = parser.parseFromString(snapshotContent, 'text/html');
 			title = doc.title;
 		}
@@ -1047,10 +1060,10 @@ Zotero.Attachments = new function () {
 				saveOptions
 			});
 
+			Zotero.Fulltext.queueItem(attachmentItem);
+
 			destDirectory = this.getStorageDirectory(attachmentItem).path;
 			await OS.File.move(tmpDirectory, destDirectory);
-			
-			await Zotero.FullText.queueItem(attachmentItem);
 		}
 		catch (e) {
 			Zotero.debug(e, 1);
@@ -1153,7 +1166,8 @@ Zotero.Attachments = new function () {
 				Zotero.debug(`downloadPDFViaBrowser: Sniffing a PDF loaded at ${name}`);
 				// try the browser
 				try {
-					channelBrowser = channel.notificationCallbacks.getInterface(Ci.nsILoadContext).topFrameElement;
+					channelBrowser = channel.notificationCallbacks.getInterface(Ci.nsIWebNavigation)
+						.QueryInterface(Ci.nsIDocShell).chromeEventHandler;
 				}
 				catch (e) {}
 				if (channelBrowser) {
@@ -1162,8 +1176,8 @@ Zotero.Attachments = new function () {
 				else {
 					// try the document for the load group
 					try {
-						channelBrowser = channel.loadGroup.notificationCallbacks.getInterface(Ci.nsILoadContext)
-							.topFrameElement;
+						channelBrowser = channel.loadGroup.notificationCallbacks.getInterface(Ci.nsIWebNavigation)
+							.QueryInterface(Ci.nsIDocShell).chromeEventHandler;
 					}
 					catch(e) {}
 					if (channelBrowser) {
@@ -1186,18 +1200,21 @@ Zotero.Attachments = new function () {
 		};
 		try {
 			Zotero.MIMETypeHandler.addHandlers("application/pdf", pdfMIMETypeHandler, true);
-			hiddenBrowser = await HiddenBrowser.create(url, {
-				requireSuccessfulStatus: true,
-				cookieSandbox: options.cookieSandbox,
-			});
+			function noop() {};
+			hiddenBrowser = Zotero.HTTP.loadDocuments([url], noop, noop, noop, true, options.cookieSandbox);
 			let onLoadTimeoutDeferred = Zotero.Promise.defer();
 			let currentUrl = "";
-			hiddenBrowser.webProgress.addProgressListener({
-				QueryInterface: ChromeUtils.generateQI([Ci.nsIWebProgressListener, Ci.nsISupportsWeakReference]),
+			hiddenBrowser.addProgressListener({
+				QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsIWebProgressListener,
+					Components.interfaces.nsISupportsWeakReference]),
+				onProgressChange: noop,
+				onStateChange: noop,
+				onStatusChange: noop,
+				onSecurityChange: noop,
 				async onLocationChange() {
-					let url = hiddenBrowser.currentURI.spec;
+					let url = hiddenBrowser.contentDocument.location.href;
 					if (currentUrl) {
-						Zotero.debug(`downloadPDFViaBrowser: A JS redirect occurred to ${url}`);
+						Zotero.debug(`downloadPDFViaBrowser: A JS redirect occurred to ${hiddenBrowser.contentDocument.location.href}`);
 					}
 					currentUrl = url;
 					Zotero.debug(`downloadPDFViaBrowser: Page with potential JS redirect loaded, giving it ${onLoadTimeout}ms to process`);
@@ -1207,7 +1224,7 @@ Zotero.Attachments = new function () {
 						onLoadTimeoutDeferred.reject(new Error(`downloadPDFViaBrowser: Loading PDF via browser timed out on the JS challenge page after ${onLoadTimeout}ms`));
 					}
 				}
-			}, Ci.nsIWebProgress.NOTIFY_LOCATION);
+			});
 			await Zotero.Promise.race([
 				onLoadTimeoutDeferred.promise,
 				Zotero.Promise.delay(downloadTimeout).then(() => {
@@ -1230,7 +1247,7 @@ Zotero.Attachments = new function () {
 		finally {
 			Zotero.MIMETypeHandler.removeHandlers('application/pdf', pdfMIMETypeHandler);
 			if (hiddenBrowser) {
-				HiddenBrowser.destroy(hiddenBrowser);
+				Zotero.Browser.deleteHiddenBrowser(hiddenBrowser);
 			}
 		}
 	};
@@ -2239,7 +2256,16 @@ Zotero.Attachments = new function () {
 	 * based on the metadata of the specified item and a format string
 	 *
 	 * (Optional) |formatString| specifies the format string -- otherwise
-	 * the 'attachmentRenameTemplate' pref is used
+	 * the 'attachmentRenameFormatString' pref is used
+	 *
+	 * Valid substitution markers:
+	 *
+	 * %c -- firstCreator
+	 * %y -- year (extracted from Date field)
+	 * %t -- title
+	 *
+	 * Fields can be truncated to a certain length by appending an integer
+	 * within curly brackets -- e.g. %t{50} truncates the title to 50 characters
 	 *
 	 * @param {Zotero.Item} item
 	 * @param {String} formatString
@@ -2248,156 +2274,79 @@ Zotero.Attachments = new function () {
 		if (!(item instanceof Zotero.Item)) {
 			throw new Error("'item' must be a Zotero.Item");
 		}
-
+		
 		if (!formatString) {
-			formatString = Zotero.Prefs.get('attachmentRenameTemplate');
+			formatString = Zotero.Prefs.get('attachmentRenameFormatString');
 		}
-
-		const getSlicedCreatorsOfType = (creatorType, slice) => {
-			let creatorTypeIDs;
-			switch (creatorType) {
-				case 'authors':
-					creatorTypeIDs = [Zotero.CreatorTypes.getPrimaryIDForType(item.itemTypeID)];
+		
+		// Replaces the substitution marker with the field value,
+		// truncating based on the {[0-9]+} modifier if applicable
+		function rpl(field, str) {
+			if (!str) {
+				str = formatString;
+			}
+			
+			switch (field) {
+				case 'creator':
+					field = 'firstCreator';
+					var rpl = '%c';
 					break;
-				case 'editors':
-					creatorTypeIDs = [Zotero.CreatorTypes.getID('editor'), Zotero.CreatorTypes.getID('seriesEditor')];
+					
+				case 'year':
+					var rpl = '%y';
 					break;
-				default:
-				case 'creators':
-					creatorTypeIDs = null;
+					
+				case 'title':
+					var rpl = '%t';
 					break;
 			}
 			
-			if (slice === 0) {
-				return [];
-			}
-			const matchingCreators = creatorTypeIDs === null
-				? item.getCreators()
-				: item.getCreators().filter(c => creatorTypeIDs.includes(c.creatorTypeID));
-			const slicedCreators = slice > 0
-				? matchingCreators.slice(0, slice)
-				: matchingCreators.slice(slice);
-
-			if (slice < 0) {
-				slicedCreators.reverse();
-			}
-			return slicedCreators;
-		};
-
-
-		const common = (value, { truncate = false, prefix = '', suffix = '', case: textCase = '' } = {}) => {
-			if (value === '' || value === null || typeof value === 'undefined') {
-				return '';
-			}
-			if (truncate) {
-				value = value.substr(0, truncate);
-			}
-			if (prefix) {
-				value = prefix + value;
-			}
-			if (suffix) {
-				value += suffix;
-			}
-			switch (textCase) {
-				case 'upper':
-					value = value.toUpperCase();
-					break;
-				case 'lower':
-					value = value.toLowerCase();
-					break;
-				case 'sentence':
-					value = value.slice(0, 1).toUpperCase() + value.slice(1);
-					break;
+			var value;
+			switch (field) {
 				case 'title':
-					value = Zotero.Utilities.capitalizeTitle(value, true);
+					value = item.getField('title', false, true);
 					break;
-				case 'hyphen':
-					value = value.toLowerCase().replace(/\s+/g, '-');
-					break;
-				case 'snake':
-					value = value.toLowerCase().replace(/\s+/g, '_');
-					break;
-				case 'camel':
-					value = value.toLowerCase().replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
-					break;
+				
+				case 'year':
+					value = item.getField('date', true, true);
+					if (value) {
+						value = Zotero.Date.multipartToSQL(value).substr(0, 4);
+						if (value == '0000') {
+							value = '';
+						}
+					}
+				break;
+				
+				default:
+					value = '' + item.getField(field, false, true);
 			}
-			return value;
-		};
-
-		const initializeFn = (name, shouldInitialize, initializeWith) => (shouldInitialize ? name.slice(0, 1).toUpperCase() + initializeWith : name);
-
-		const transformName = (creator, { name, namePartSeparator, initialize, initializeWith } = {}) => {
-			if (creator.name) {
-				return initializeFn(creator.name, ['full', 'name'].includes(initialize), initializeWith);
-			}
-
-			const firstLast = ['full', 'given-family', 'first-last'];
-			const lastFirst = ['full-reversed', 'family-given', 'last-first'];
-			const first = ['given', 'first'];
-			const last = ['family', 'last'];
-
-			if (firstLast.includes(name)) {
-				return initializeFn(creator.firstName, ['full', ...first].includes(initialize), initializeWith) + namePartSeparator + initializeFn(creator.lastName, ['full', ...last].includes(initialize), initializeWith);
-			}
-			else if (lastFirst.includes(name)) {
-				return initializeFn(creator.lastName, ['full', ...last].includes(initialize), initializeWith) + namePartSeparator + initializeFn(creator.firstName, ['full', ...first].includes(initialize), initializeWith);
-			}
-			else if (first.includes(name)) {
-				return initializeFn(creator.firstName, ['full', ...first].includes(initialize), initializeWith);
-			}
-
-			return initializeFn(creator.lastName, ['full', ...last].includes(initialize), initializeWith);
-		};
-
-		const commonCreators = (value, { max = Infinity, name = 'family', namePartSeparator = ' ', join = ', ', initialize = '', initializeWith = '.' } = {}) => {
-			return getSlicedCreatorsOfType(value, max)
-				.map(c => transformName(c, { name, namePartSeparator, initialize, initializeWith }))
-				.join(join);
-		};
-
-		const fields = Zotero.ItemFields.getAll()
-			.map(f => f.name)
-			.reduce((obj, name) => {
-				obj[name] = (args) => {
-					return common(item.getField(name, false, true), args);
-				};
-				return obj;
-			}, {});
-
-		const year = (args) => {
-			let value = item.getField('date', true, true);
-			if (value) {
-				value = Zotero.Date.multipartToSQL(value).substr(0, 4);
-				if (value == '0000') {
-					value = '';
+			
+			var re = new RegExp("\{?([^%\{\}]*)" + rpl + "(\{[0-9]+\})?" + "([^%\{\}]*)\}?");
+			
+			// If no value for this field, strip entire conditional block
+			// (within curly braces)
+			if (!value) {
+				if (str.match(re)) {
+					return str.replace(re, '')
 				}
 			}
-			return common(value, args);
-		};
-
-		const itemType = ({ localize = false, ...rest }) => common(
-			localize ? Zotero.ItemTypes.getLocalizedString(item.itemType) : item.itemType, rest
-		);
-
-		const creatorFields = ['authors', 'editors', 'creators'].reduce((obj, name) => {
-			obj[name] = (args) => {
-				return common(commonCreators(name, args), args);
-			};
-			return obj;
-		}, {});
-
-		const firstCreator = args => common(
-			// Pass unformatted = true to omit bidi isolates
-			item.getField('firstCreator', true, true), args
-		);
-
-		const vars = { ...fields, ...creatorFields, firstCreator, itemType, year };
-
-		formatString = Zotero.Utilities.Internal.generateHTMLFromTemplate(formatString, vars);
+			
+			var f = function(match, p1, p2, p3) {
+				var maxChars = p2 ? p2.replace(/[^0-9]+/g, '') : false;
+				return p1 + (maxChars ? value.substr(0, maxChars) : value) + p3;
+			}
+			
+			return str.replace(re, f);
+		}
+		
+		formatString = rpl('creator');
+		formatString = rpl('year');
+		formatString = rpl('title');
+		
 		formatString = Zotero.Utilities.cleanTags(formatString);
 		formatString = Zotero.File.getValidFileName(formatString);
 		return formatString;
-	};
+	}
 	
 	
 	this.shouldAutoRenameFile = function (isLink) {
@@ -2953,18 +2902,11 @@ Zotero.Attachments = new function () {
 	}
 	
 	
-	this._getExtensionFromURL = function (url, contentType) {
-		let fileExtension;
-		try {
-			let nsIURL = Services.io.newURI(url)
-				.QueryInterface(Ci.nsIURL);
-			fileExtension = nsIURL.fileExtension;
-		}
-		catch (e) {
-			// The URI is not a URL
-			fileExtension = '';
-		}
-		return Zotero.MIME.getPrimaryExtension(contentType, fileExtension);
+	this._getExtensionFromURL = function(url, contentType) {
+		var nsIURL = Components.classes["@mozilla.org/network/standard-url;1"]
+					.createInstance(Components.interfaces.nsIURL);
+		nsIURL.spec = url;
+		return Zotero.MIME.getPrimaryExtension(contentType, nsIURL.fileExtension);
 	}
 	
 	
@@ -2994,7 +2936,7 @@ Zotero.Attachments = new function () {
 		var collections = options.collections;
 		var saveOptions = options.saveOptions;
 		
-		return Zotero.DB.executeTransaction(async function () {
+		return Zotero.DB.executeTransaction(function* () {
 			var attachmentItem = new Zotero.Item('attachment');
 			if (parentItemID) {
 				let {libraryID: parentLibraryID, key: parentKey} =
@@ -3022,7 +2964,7 @@ Zotero.Attachments = new function () {
 			if (collections) {
 				attachmentItem.setCollections(collections);
 			}
-			await attachmentItem.save(saveOptions);
+			yield attachmentItem.save(saveOptions);
 			
 			return attachmentItem;
 		}.bind(this));
@@ -3032,21 +2974,121 @@ Zotero.Attachments = new function () {
 	/**
 	 * If necessary/possible, detect the file charset and index the file
 	 *
-	 * Since we have to load the content into the browser to get the character set, we create the
-	 * item above and update asynchronously after the fact
+	 * Since we have to load the content into the browser to get the
+	 * character set (at least until we figure out a better way to get
+	 * at the native detectors), we create the item above and update
+	 * asynchronously after the fact
 	 *
 	 * @return {Promise}
 	 */
-	var _postProcessFile = async function (item) {
-		return Zotero.Fulltext.indexItems([item.id]);
-	};
-	
+	var _postProcessFile = Zotero.Promise.coroutine(function* (item, file, contentType) {
+		// Don't try to process if MIME type is unknown
+		if (!contentType) {
+			return;
+		}
+		
+		// Items with content types that get cached by the fulltext indexer can just be indexed,
+		// since a charset isn't necessary
+		if (Zotero.Fulltext.isCachedMIMEType(contentType)) {
+			return Zotero.Fulltext.indexItems([item.id]);
+		}
+		
+		// Ignore non-text types
+		var ext = Zotero.File.getExtension(file);
+		if (!Zotero.MIME.hasInternalHandler(contentType, ext) || !Zotero.MIME.isTextType(contentType)) {
+			return;
+		}
+		
+		// If the charset is already set, index item directly
+		if (item.attachmentCharset) {
+			return Zotero.Fulltext.indexItems([item.id]);
+		}
+		
+		// Otherwise, load in a hidden browser to get the charset, and then index the document
+		return new Zotero.Promise(function (resolve, reject) {
+			var browser = Zotero.Browser.createHiddenBrowser(
+				null,
+				// Disable JavaScript, since it can cause imports that include HTML files to hang
+				// (from network requests that fail?)
+				{ allowJavaScript: false }
+			);
+			
+			var pageshown = false;
+			
+			if (item.attachmentCharset) {
+				var onpageshow = async function () {
+					// ignore spurious about:blank loads
+					if(browser.contentDocument.location.href == "about:blank") return;
+					
+					pageshown = true;
+					
+					browser.removeEventListener("pageshow", onpageshow, false);
+					
+					try {
+						await Zotero.Fulltext.indexDocument(browser.contentDocument, itemID);
+						resolve();
+					}
+					catch (e) {
+						reject(e);
+					}
+					finally {
+						Zotero.Browser.deleteHiddenBrowser(browser);
+					}
+				};
+				browser.addEventListener("pageshow", onpageshow, false);
+			}
+			else {
+				let callback = async function (charset, args) {
+					// ignore spurious about:blank loads
+					if(browser.contentDocument.location.href == "about:blank") return;
+					
+					pageshown = true;
+					
+					try {
+						if (charset) {
+							charset = Zotero.CharacterSets.toCanonical(charset);
+							if (charset) {
+								item.attachmentCharset = charset;
+								await item.saveTx({
+									skipNotifier: true
+								});
+							}
+						}
+						
+						await Zotero.Fulltext.indexDocument(browser.contentDocument, item.id);
+						resolve();
+					}
+					catch (e) {
+						reject(e);
+					}
+					finally {
+						Zotero.Browser.deleteHiddenBrowser(browser);
+					}
+				};
+				Zotero.File.addCharsetListener(browser, callback, item.id);
+			}
+			
+			var url = Components.classes["@mozilla.org/network/protocol;1?name=file"]
+						.getService(Components.interfaces.nsIFileProtocolHandler)
+						.getURLSpecFromFile(file);
+			browser.loadURI(url);
+			
+			// Avoid a hang if a pageshow is never called on the hidden browser (which can happen
+			// if a .pdf file is really HTML, which can also result in the file being launched,
+			// which we should try to fix)
+			setTimeout(function () {
+				if (!pageshown) {
+					reject(new Error("pageshow not called in hidden browser"));
+				}
+			}, 5000);
+		});
+	});
 	
 	/**
 	 * Determines if a given document is an instance of PDFJS
 	 * @return {Boolean}
 	 */
-	this.isPDFJSDocument = function(doc) {
+	this.isPDFJS = function(doc) {
 		// pdf.js HACK
 		// This may no longer be necessary (as of Fx 23)
 		if(doc.contentType === "text/html") {
@@ -3060,16 +3102,6 @@ Zotero.Attachments = new function () {
 		}
 		return false;
 	}
-
-
-	/**
-	 * Determines if a given Browser is displaying an instance of PDFJS
-	 * @return {Boolean}
-	 */
-	this.isPDFJSBrowser = function (browser) {
-		// https://searchfox.org/mozilla-esr102/rev/f78d456e055a41106be086c501b271385a973961/browser/base/content/browser.js#5518
-		return browser.contentPrincipal?.spec == "resource://pdf.js/web/viewer.html";
-	};
 	
 	
 	this.linkModeToName = function (linkMode) {
@@ -3097,4 +3129,4 @@ Zotero.Attachments = new function () {
 		}
 		throw new Error(`Invalid link mode name '${linkModeName}'`);
 	}
-};
+}

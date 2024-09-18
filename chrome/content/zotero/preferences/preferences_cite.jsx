@@ -34,35 +34,47 @@ var { makeRowRenderer } = VirtualizedTable;
 
 Zotero_Preferences.Cite = {
 	styles: [],
-	wordPluginResourcePaths: {
-		libreOffice: 'zotero-libreoffice-integration',
-		macWord: 'zotero-macword-integration',
-		winWord: 'zotero-winword-integration'
-	},
+	wordPluginIDs: new Set([
+		'zoteroOpenOfficeIntegration@zotero.org',
+		'zoteroMacWordIntegration@zotero.org',
+		'zoteroWinWordIntegration@zotero.org'
+	]),
 
-	init: async function () {
-		// Init word plugin sections
-		let wordPlugins = [];
-		if (Zotero.isWin) {
-			wordPlugins.push('winWord');
+	init: Zotero.Promise.coroutine(function* () {
+		Components.utils.import("resource://gre/modules/AddonManager.jsm");
+		this.updateWordProcessorInstructions();
+		yield this.refreshStylesList();
+	}),
+	
+	
+	/**
+	 * Determines if any word processors are disabled and if so, shows a message in the pref pane
+	 */
+	updateWordProcessorInstructions: async function () {
+		var someDisabled = false;
+		await new Promise(function(resolve) {
+			AddonManager.getAllAddons(function(addons) {
+				for (let addon of addons) {
+					if (Zotero_Preferences.Cite.wordPluginIDs.has(addon.id) && addon.userDisabled) {
+						someDisabled = true;
+					}
+				}
+				resolve();
+			});
+		});
+		if (someDisabled) {
+			document.getElementById("wordProcessors-somePluginsDisabled").hidden = undefined;
 		}
-		else if (Zotero.isMac) {
-			wordPlugins.push('macWord');
-		}
-		wordPlugins.push('libreOffice');
-		await Zotero.Promise.delay();
-		for (let wordPlugin of wordPlugins) {
-			// This is the weirdest indirect code, but let's not fix what's not broken
-			try {
-				var installer = Components.utils.import(`resource://${this.wordPluginResourcePaths[wordPlugin]}/installer.jsm`).Installer;
-				(new installer(true)).showPreferences(document);
-			} catch(e) {
-				Zotero.logError(e);
+	},
+	
+	enableWordPlugins: function () {
+		AddonManager.getAllAddons(function(addons) {
+			for (let addon of addons) {
+				if (Zotero_Preferences.Cite.wordPluginIDs.has(addon.id) && addon.userDisabled) {
+					addon.userDisabled = false;
+				}
 			}
-		}
-		await this.refreshStylesList();
-		document.querySelector('#zotero-prefpane-cite').addEventListener('showing', () => {
-			this._tree.invalidate();
+			return Zotero.Utilities.Internal.quit(true);
 		});
 	},
 	
@@ -115,17 +127,12 @@ Zotero_Preferences.Cite = {
 					columns={columns}
 					staticColumns={true}
 					disableFontSizeScaling={true}
-					onSelectionChange={selection => document.getElementById('styleManager-delete').disabled = !selection.count}
+					onSelectionChange={() => document.getElementById('styleManager-delete').disabled = undefined}
 					onKeyDown={handleKeyDown}
 					getRowString={index => this.styles[index].title}
 				/>
 			);
-
-			let styleManager = document.getElementById("styleManager");
-			await new Promise(resolve => ReactDOM.render(elem, styleManager, resolve));
-
-			// Fix style manager showing partially blank until scrolled
-			setTimeout(() => this._tree.invalidate());
+			await new Promise(resolve => ReactDOM.render(elem, document.getElementById("styleManager"), resolve));
 		}
 		else {
 			this._tree.invalidate();
@@ -137,27 +144,22 @@ Zotero_Preferences.Cite = {
 				this._tree.selection.select(index);
 			}
 		}
-		else if ([...this._tree.selection.selected].some(i => i >= this.styles.length)) {
-			this._tree.selection.clearSelection();
-		}
 	},
 	
 	
 	openStylesPage: function () {
-		Zotero.openInViewer("https://www.zotero.org/styles/", {
-			onLoad(doc) {
-				// Hide header, intro paragraph, Link, and Source
-				//
-				// (The first two aren't sent to the client normally, but hide anyway in case they are.)
-				var style = doc.createElement('style');
-				style.type = 'text/css';
-				style.innerHTML = 'h1, #intro, .style-individual-link, .style-view-source { display: none !important; }'
-					// TEMP: Default UA styles that aren't being included in Firefox 60 for some reason
-					+ 'html { background: #fff; }'
-					+ 'a { color: rgb(0, 0, 238) !important; text-decoration: underline; }'
-					+ 'a:active { color: rgb(238, 0, 0) !important; }';
-				doc.getElementsByTagName('head')[0].appendChild(style);
-			}
+		Zotero.openInViewer("https://www.zotero.org/styles/", function (doc) {
+			// Hide header, intro paragraph, Link, and Source
+			//
+			// (The first two aren't sent to the client normally, but hide anyway in case they are.)
+			var style = doc.createElement('style');
+			style.type = 'text/css';
+			style.innerHTML = 'h1, #intro, .style-individual-link, .style-view-source { display: none !important; }'
+				// TEMP: Default UA styles that aren't being included in Firefox 60 for some reason
+				+ 'html { background: #fff; }'
+				+ 'a { color: rgb(0, 0, 238) !important; text-decoration: underline; }'
+				+ 'a:active { color: rgb(238, 0, 0) !important; }';
+			doc.getElementsByTagName('head')[0].appendChild(style);
 		});
 	},
 	
@@ -223,6 +225,7 @@ Zotero_Preferences.Cite = {
 			}
 			
 			yield this.refreshStylesList();
+			document.getElementById('styleManager-delete').disabled = true;
 		}
 	}),
 	

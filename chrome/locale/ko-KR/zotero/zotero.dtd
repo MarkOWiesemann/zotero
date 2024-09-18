@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "항목 삭제...">
 <!ENTITY zotero.toolbar.newLibrary.label "새 라이브러리">
 <!ENTITY zotero.toolbar.newCollection.label "새 컬렉션...">
+<!ENTITY zotero.toolbar.markFeedRead.label "피드를 읽은 것으로 표시">
 <!ENTITY zotero.toolbar.newGroup "새 그룹...">
 <!ENTITY zotero.toolbar.newSubcollection.label "새 하위 컬렉션...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "새 저장된 검색...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "새 피드">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "URL에서...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "OPML에서...">
+<!ENTITY zotero.toolbar.feeds.refresh "피드 새로고침">
 <!ENTITY zotero.toolbar.feeds.edit "피드 편집...">
 
 <!ENTITY zotero.item.add "추가">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "글자 변형">
 <!ENTITY zotero.item.textTransform.titlecase "글차 첫머리는 대문자">
 <!ENTITY zotero.item.textTransform.sentencecase "문장 첫머리는 대문자">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "성/이름 맞바꾸기">
 <!ENTITY zotero.item.viewOnline "온라인으로 보기">
 <!ENTITY zotero.item.copyAsURL "URL로 복사">
 <!ENTITY zotero.item.deletePermanently "완전히 삭제...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "색상 지정...">
 <!ENTITY zotero.tagSelector.renameTag "태그 이름 변경...">
 <!ENTITY zotero.tagSelector.deleteTag "태그 지우기...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "태그 색상 및 위치 선택">
 <!ENTITY zotero.tagColorChooser.color "색상:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "불러오기">
 <!ENTITY zotero.import.whereToImportFrom "어디서 불러올까요?">
 <!ENTITY zotero.import.source.file "파일 (BiBTeX, RIS, Zotero RDF 등)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "불러오는 중...">
 <!ENTITY zotero.import.database "데이터베이스">
 <!ENTITY zotero.import.lastModified "마지막 수정 시간">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "컬렉션 및 항목을 새 컬렉션으로 불러오기">
 <!ENTITY zotero.import.fileHandling "파일 처리 방법">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "내보내기...">
 <!ENTITY zotero.exportOptions.format.label "형식:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "No Spreads">
 <!ENTITY zotero.pdfReader.oddSpreads "Odd Spreads">
 <!ENTITY zotero.pdfReader.evenSpreads "Even Spreads">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom In">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom Out">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatically Resize">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom to Page Width">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

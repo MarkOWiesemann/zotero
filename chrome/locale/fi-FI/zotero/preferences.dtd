@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Zoteron asetukset">
 
-<!ENTITY zotero.preferences.helpButton.label "Ohje">
-
 <!ENTITY zotero.preferences.default "Oletus:">
 <!ENTITY zotero.preferences.items "nimikkeet">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Yleistä">
 
-<!ENTITY zotero.preferences.interface "Käyttöliittymä">
 <!ENTITY zotero.preferences.fileHandling "Tiedostojen käsittely">
 <!ENTITY zotero.preferences.automaticSnapshots "Ota tilannekuvat automaattisesti luotaessa nimikettä web-sivusta">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Liitä automaattisesti asiaankuuluvat PDF:t ja muut tiedostot">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Nouda metadata PDF-tiedostoille automaattisesti">
+<!ENTITY zotero.preferences.autoRenameFiles "Nimeä liitetiedostot automaattisesti käyttämällä nimikkeen metatietoja">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Nimeä uudelleen linkitetyt tiedostot">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Avaa PDF:t ohjelmalla">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "Järjestelmän oletus">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Poista roskakorista automaattisesti nimikkeet, jotka poistettiin yli">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "päivää sitten">
 
+<!ENTITY zotero.preferences.pdfReader "PDF-lukija">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Näytä välilehdet">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Tekijä - Vuosi - Otsikko">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Otsikko - Tekijä - Vuosi">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Poista tiedostojen synkronointihistoria">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Vertaa kaikkia liitetiedostoja tallennuspalvelun kanssa">
 <!ENTITY zotero.preferences.sync.reset "Palauta alkutilaan">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Näytä synkroinnin nollauksen asetukset...">
 <!ENTITY zotero.preferences.sync.reset.button "Palauta alkutilaan...">
 
 

@@ -52,7 +52,6 @@ var Zotero_Citation_Dialog = new function () {
 	var _sortCheckbox;
 	var _citationList;
 	var _originalHTML;
-	var _editor;
 	var serial_number;
 	var io;
 	
@@ -73,38 +72,29 @@ var Zotero_Citation_Dialog = new function () {
 	 */
 	this.load = Zotero.Promise.coroutine(function* () {
 		// make sure we are visible
-		window.setTimeout(async function () {
-			let screenX = window.screenX, screenY = window.screenY, i = 5;
-			while (!screenX && i--) {
-				await new Promise(resolve => window.requestAnimationFrame(resolve));
-				screenX = window.screenX;
-				screenY = window.screenY;
-			}
-			var xRange = [window.screen.availLeft, window.screen.left + window.screen.width - window.outerWidth];
-			var yRange = [window.screen.availTop, window.screen.top + window.screen.height - window.outerHeight];
+		window.setTimeout(function() {
+			var screenX = window.screenX;
+			var screenY = window.screenY;
+			var xRange = [window.screen.availLeft, window.screen.width-window.outerWidth];
+			var yRange = [window.screen.availTop, window.screen.height-window.outerHeight];
 			if(screenX < xRange[0] || screenX > xRange[1] || screenY < yRange[0] || screenY > yRange[1]) {
 				var targetX = Math.max(Math.min(screenX, xRange[1]), xRange[0]);
 				var targetY = Math.max(Math.min(screenY, yRange[1]), yRange[0]);
-				Zotero.debug(`Moving window to ${targetX}, ${targetY}`);
+				Zotero.debug("Moving window to "+targetX+", "+targetY);
 				window.moveTo(targetX, targetY);
 			}
 		}, 0);
 		
+		document.documentElement.getButton("extra1").label = Zotero.getString("citation.multipleSources");
+		document.documentElement.getButton("extra2").label = Zotero.getString("citation.showEditor");
 		
 		io = window.arguments[0].wrappedJSObject;
 		
 		// find accept button
-		_acceptButton = document.querySelector('dialog').getButton("accept");
-		_multipleSourceButton = document.querySelector('dialog').getButton("extra1");
-		_multipleSourceButton.label = Zotero.getString("citation.multipleSources")
-		document.querySelector('dialog').getButton("extra2").label = Zotero.getString("citation.showEditor");
+		_acceptButton = document.getElementById("zotero-add-citation-dialog").getButton("accept");
+		_multipleSourceButton = document.documentElement.getButton("extra1");
 		_autoRegeneratePref = Zotero.Prefs.get("integration.autoRegenerate");
-		_citationList = document.getElementById("item-list");
-		
-		window.addEventListener('dialogaccept', () => Zotero_Citation_Dialog.accept());
-		window.addEventListener('dialogcancel', () => Zotero_Citation_Dialog.cancel());
-		window.addEventListener('dialogextra1', () => Zotero_Citation_Dialog.toggleMultipleSources());
-		window.addEventListener('dialogextra2', () => Zotero_Citation_Dialog.toggleEditor());
+		_citationList = document.getElementById("citation-list");
 		
 		// Manipulated by _addItem().  Discriminates between cite instances
 		// based on the same item in the same citation.  Internal throwaway variable,
@@ -128,7 +118,7 @@ var Zotero_Citation_Dialog = new function () {
 			var locator = locators[value];
 			let locatorLabel = Zotero.Cite.getLocatorString(locator);
 			// add to list of labels
-			var child = document.createXULElement("menuitem");
+			var child = document.createElement("menuitem");
 			child.setAttribute("value", value);
 			child.setAttribute("label", locatorLabel);
 			label_list.appendChild(child);
@@ -142,16 +132,12 @@ var Zotero_Citation_Dialog = new function () {
 			i++;
 		}
 		menu.selectedIndex = pageLocatorIndex;
-
-		if (!io.itemTreeID) {
-			io.itemTreeID = "add-citation-select-item-dialog";
-		}
 		
 		// load (from selectItemsDialog.js)
 		yield doLoad();
 		
 		// if we already have a citation, load data from it
-		_editor = document.querySelector('#editor').contentWindow.editor;
+		document.getElementById('editor').format = "RTF";
 		if(io.citation.citationItems.length) {
 			if(io.citation.citationItems.length === 1) {
 				// single citation
@@ -231,7 +217,7 @@ var Zotero_Citation_Dialog = new function () {
 		}
 		_multipleSourcesOn = !_multipleSourcesOn;
 		var popup = document.defaultView;
-		var dialog = document.documentElement;
+		var dialog = document.getElementById("zotero-add-citation-dialog");
 		if (dialog.getAttribute("height") == 1) {
 			 popup.sizeToContent();
 		}
@@ -301,7 +287,7 @@ var Zotero_Citation_Dialog = new function () {
 
 			// turn off highlight in selected item list
 			_suppressNextListSelect = true;
-			document.getElementById("item-list").selectedIndex = -1;
+			document.getElementById("citation-list").selectedIndex = -1;
 
 			// disable all fields
 
@@ -529,7 +515,7 @@ var Zotero_Citation_Dialog = new function () {
 	 * Ask whether to modify the preview
 	 */
 	function confirmRegenerate(focusShifted) {
-		if(_editor.getContent() == _originalHTML || _originalHTML === undefined) {
+		if(document.getElementById('editor').value == _originalHTML || _originalHTML === undefined) {
 			// no changes; just update without asking
 			_updatePreview();
 			return;
@@ -577,24 +563,26 @@ var Zotero_Citation_Dialog = new function () {
 		_previewShown = !_previewShown;
 		
 		if(_previewShown) {
-			document.querySelector('dialog').getButton("extra2").label = Zotero.getString("citation.hideEditor");		
+			document.documentElement.getButton("extra2").label = Zotero.getString("citation.hideEditor");		
 			if (!text && _customHTML) {
 				text = _customHTML;
 			}
 			if(text) {
 				io.preview().then(function(preview) {
 					_originalHTML = preview;
-					_editor.setContent(text, true);
+					editor.value = text;
 				}).done();
 			} else {
 				_updatePreview();
 			}
 		} else {
-			_customHTML = _editor.getContent(true);
-			document.querySelector('dialog').getButton("extra2").label = Zotero.getString("citation.showEditor");		
+			if (editor.initialized) {
+				if (editor.value) {
+					_customHTML = editor.value;
+				}
+			}
+			document.documentElement.getButton("extra2").label = Zotero.getString("citation.showEditor");		
 		}
-		// To resize virtualized-tables
-		window.dispatchEvent(new Event('resize'));
 	}
 	
 	/*
@@ -606,10 +594,10 @@ var Zotero_Citation_Dialog = new function () {
 		_getCitation();
 		var isCustom = _previewShown && io.citation.citationItems.length	// if a citation is selected
 				&& _originalHTML
-				&& _editor.getContent(true) != _originalHTML	// and citation has been edited
+				&& document.getElementById('editor').value != _originalHTML	// and citation has been edited
 		
 		if(isCustom) {	
-			var citation = _editor.getContent(true);
+			var citation = document.getElementById('editor').value;
 			if(Zotero.Utilities.trim(citation) == "") {				
 				var promptService = Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
 							.getService(Components.interfaces.nsIPromptService);
@@ -676,17 +664,23 @@ var Zotero_Citation_Dialog = new function () {
 	 */
 	function _updatePreview() {
 		if(_previewShown) {
+			var editor = document.getElementById('editor');
 			_getCitation();
 			
-			_editor.setEnabled(io.citation.citationItems.length);
-			if (io.citation.citationItems.length) {
-				io.preview().then((preview) => {
-					_editor.setContent(preview, true);
-
-					_originalHTML = _editor.getContent(true);
+			editor.readonly = !io.citation.citationItems.length;
+			if(io.citation.citationItems.length) {
+				io.preview().then(function(preview) {
+					editor.value = preview;
+					
+					if (editor.initialized) {
+						_originalHTML = editor.value;
+					}
+					else {
+						editor.onInit(() => _originalHTML = editor.value);
+					}
 				});
 			} else {
-				_editor.setContent("");
+				editor.value = "";
 				_originalHTML = "";
 			}
 		}
@@ -824,7 +818,7 @@ var Zotero_Citation_Dialog = new function () {
 	 * Add an item to the item list (multiple sources only)
 	 */
 	function _addItem(item, forceID) {
-		var itemNode = document.createXULElement("richlistitem");
+		var itemNode = document.createElement("listitem");
 
 		var itemDataID;
 		if (!forceID) {
@@ -835,11 +829,9 @@ var Zotero_Citation_Dialog = new function () {
 		}
 
 		itemNode.setAttribute("value", itemDataID);
-		let image = document.createXULElement('image');
-		image.src = item.getImageSrc();
-		itemNode.append(image);
+		itemNode.setAttribute("label", item.getDisplayTitle());
 		itemNode.setAttribute("class", "listitem-iconic");
-		itemNode.append(item.getDisplayTitle());
+		itemNode.setAttribute("image", item.getImageSrc());
 		_citationList.appendChild(itemNode);
 		return itemNode;
 	}

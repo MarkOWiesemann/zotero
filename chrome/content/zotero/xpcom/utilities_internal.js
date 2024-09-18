@@ -26,12 +26,6 @@
     ***** END LICENSE BLOCK *****
 */
 
-var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
-
-XPCOMUtils.defineLazyModuleGetters(globalThis, {
-	Subprocess: "resource://gre/modules/Subprocess.jsm",
-});
-
 /**
  * @class Utility functions not made available to translators
  */
@@ -257,16 +251,16 @@ Zotero.Utilities.Internal = {
 				size: 0,
 				data: '',
 				
-				onStartRequest: function (request) {},
+				onStartRequest: function (request, context) {},
 				
-				onStopRequest: function (request, status) {
+				onStopRequest: function (request, context, status) {
 					this.binaryInputStream.close();
 					delete this.binaryInputStream;
 					
 					deferred.resolve(this.data);
 				},
 				
-				onDataAvailable: function (request, inputStream, offset, count) {
+				onDataAvailable: function (request, context, inputStream, offset, count) {
 					this.size += count;
 					
 					this.binaryInputStream = Components.classes["@mozilla.org/binaryinputstream;1"]
@@ -323,13 +317,13 @@ Zotero.Utilities.Internal = {
 			{
 				data: '',
 				
-				onStartRequest: function (request) {},
+				onStartRequest: function (request, context) {},
 				
-				onStopRequest: function (request, status) {
+				onStopRequest: function (request, context, status) {
 					deferred.resolve(this.data);
 				},
 				
-				onDataAvailable: function (request, inputStream, offset, count) {
+				onDataAvailable: function (request, context, inputStream, offset, count) {
 					this.data += NetUtil.readInputStreamToString(
 						inputStream,
 						inputStream.available(),
@@ -499,35 +493,7 @@ Zotero.Utilities.Internal = {
 			cookieSandbox.attachToInterfaceRequestor(wbp.progressListener);
 		}
 		
-		// TODO: Check/fix cookie stuff
-		var cookieJarSettings = Cc["@mozilla.org/cookieJarSettings;1"]
-			.createInstance(Ci.nsICookieJarSettings);
-		//cookieJarSettings.initWithURI(uri, options.incognito);
-		
-		var loadContext = Cu.createLoadContext();
-		//loadContext.usePrivateBrowsing = true;
-		
-		wbp.saveURI(
-			uri,
-			// triggeringPrincipal
-			Services.scriptSecurityManager.createNullPrincipal({}),
-			// cacheKey
-			null,
-			// referrerInfo
-			null,
-			// cookieJarSettings
-			cookieJarSettings,
-			// postData
-			null,
-			// extraHeaders
-			headers,
-			// file
-			target,
-			// contentPolicyType
-			Ci.nsIContentPolicy.TYPE_DOCUMENT,
-			// privacyContext
-			loadContext
-		);
+		wbp.saveURI(uri, null, null, null, null, headers, target, null);
 	},
 	
 	
@@ -589,6 +555,177 @@ Zotero.Utilities.Internal = {
 		return deferred.promise;
 	},
 
+
+	/**
+	 * Takes in a document, creates a JS Sandbox and executes the SingleFile
+	 * extension to save the page as one single file without JavaScript.
+	 *
+	 * @param {Object} document
+	 * @return {String} Snapshot of the page as a single file
+	 */
+	snapshotDocument: async function (document) {
+		// Create sandbox for SingleFile
+		var view = document.defaultView;
+		let sandbox = Zotero.Utilities.Internal.createSnapshotSandbox(view);
+
+		const SCRIPTS = [
+			// This first script replace in the INDEX_SCRIPTS from the single file cli loader
+			"lib/single-file.js",
+
+			// Web SCRIPTS
+			"lib/single-file-hooks-frames.js",
+		];
+
+		const { loadSubScript } = Components.classes['@mozilla.org/moz/jssubscript-loader;1']
+			.getService(Ci.mozIJSSubScriptLoader);
+
+		Zotero.debug('Injecting single file scripts');
+		// Run all the scripts of SingleFile scripts in Sandbox
+		SCRIPTS.forEach(
+			script => loadSubScript('resource://zotero/SingleFile/' + script, sandbox)
+		);
+		// Import config
+		loadSubScript('chrome://zotero/content/xpcom/singlefile.js', sandbox);
+
+		// In the client we turn off this auto-zooming feature because it does not work
+		// since the hidden browser does not have a clientHeight.
+		Components.utils.evalInSandbox(
+			'Zotero.SingleFile.CONFIG.loadDeferredImagesKeepZoomLevel = true;',
+			sandbox
+		);
+
+		Zotero.debug('Injecting single file scripts into frames');
+
+		// List of scripts from:
+		// resource/SingleFile/extension/lib/single-file/core/bg/scripts.js
+		const frameScripts = [
+			"lib/single-file-hooks-frames.js",
+			"lib/single-file-frames.js",
+		];
+
+		// Create sandboxes for all the frames we find
+		const frameSandboxes = [];
+		for (let i = 0; i < sandbox.window.frames.length; ++i) {
+			let frameSandbox = Zotero.Utilities.Internal.createSnapshotSandbox(sandbox.window.frames[i]);
+
+			// Run all the scripts of SingleFile scripts in Sandbox
+			frameScripts.forEach(
+				script => loadSubScript('resource://zotero/SingleFile/' + script, frameSandbox)
+			);
+
+			frameSandboxes.push(frameSandbox);
+		}
+
+		// Use SingleFile to retrieve the html
+		const pageData = await Components.utils.evalInSandbox(
+			`this.singlefile.getPageData(
+				Zotero.SingleFile.CONFIG,
+				{ fetch: ZoteroFetch }
+			);`,
+			sandbox
+		);
+
+		// Clone so we can nuke the sandbox
+		let content = pageData.content;
+
+		// Nuke frames and then main sandbox
+		frameSandboxes.forEach(frameSandbox => Components.utils.nukeSandbox(frameSandbox));
+		Components.utils.nukeSandbox(sandbox);
+
+		return content;
+	},
+
+
+	createSnapshotSandbox: function (view) {
+		let sandbox = new Components.utils.Sandbox(view, {
+			wantGlobalProperties: ["XMLHttpRequest", "fetch"],
+			sandboxPrototype: view
+		});
+		sandbox.window = view.window;
+		sandbox.document = sandbox.window.document;
+		sandbox.browser = false;
+		// See comment in babel-worker.js
+		sandbox.globalThis = view.window;
+
+		sandbox.Zotero = Components.utils.cloneInto({ HTTP: {} }, sandbox);
+		sandbox.Zotero.debug = Components.utils.exportFunction(Zotero.debug, sandbox);
+		// Mostly copied from:
+		// resources/SingleFile/extension/lib/single-file/fetch/bg/fetch.js::fetchResource
+		sandbox.coFetch = Components.utils.exportFunction(
+			function (url, options, onDone) {
+				const xhrRequest = new XMLHttpRequest();
+				xhrRequest.withCredentials = true;
+				xhrRequest.responseType = "arraybuffer";
+				xhrRequest.onerror = () => {
+					let error = { error: `Request failed for ${url}` };
+					onDone(Components.utils.cloneInto(error, sandbox));
+				};
+				xhrRequest.onreadystatechange = () => {
+					if (xhrRequest.readyState == XMLHttpRequest.DONE) {
+						if (xhrRequest.status || xhrRequest.response.byteLength) {
+							let res = {
+								array: new Uint8Array(xhrRequest.response),
+								headers: { "content-type": xhrRequest.getResponseHeader("Content-Type") },
+								status: xhrRequest.status
+							};
+							// Ensure sandbox will have access to response by cloning
+							onDone(Components.utils.cloneInto(res, sandbox));
+						}
+						else {
+							let error = { error: 'Bad Status or Length' };
+							onDone(Components.utils.cloneInto(error, sandbox));
+						}
+					}
+				};
+				xhrRequest.open("GET", url, true);
+				if (options && options.headers) {
+					for (const entry of Object.entries(options.headers)) {
+						xhrRequest.setRequestHeader(entry[0], entry[1]);
+					}
+				}
+				xhrRequest.send();
+			},
+			sandbox
+		);
+
+		// First we try regular fetch, then proceed with fetch outside sandbox to evade CORS
+		// restrictions, partly from:
+		// resources/SingleFile/extension/lib/single-file/fetch/content/content-fetch.js::fetch
+		Components.utils.evalInSandbox(
+			`
+			ZoteroFetch = async function (url, options) {
+				try {
+					let response = await fetch(url, { cache: "force-cache", headers: options.headers });
+					return response;
+				}
+				catch (error) {
+					let response = await new Promise((resolve, reject) => {
+						coFetch(url, { headers: options.headers }, (response) => {
+							if (response.error) {
+								Zotero.debug("Error retrieving url: " + url);
+								Zotero.debug(response);
+								reject(new Error(response.error));
+							}
+							else {
+								resolve(response);
+							}
+						});
+					});
+
+					return {
+						status: response.status,
+						headers: { get: headerName => response.headers[headerName] },
+						arrayBuffer: async () => response.array.buffer
+					};
+				}
+			};`,
+			sandbox
+		);
+
+		return sandbox;
+	},
+	
+	
 	/**
 	 * Launch a process
 	 * @param {nsIFile|String} cmd Path to command to launch
@@ -624,31 +761,7 @@ Zotero.Utilities.Internal = {
 		
 		return deferred.promise;
 	}),
-	
-	/**
-	 * Run a short-lived process and return its stdout
-	 *
-	 * @param {String} command - The command to run; if no slashes, will search PATH for the command
-	 * @param {String[]} args - An array of arguments to pass to the command
-	 * @return {String}
-	 */
-	subprocess: async function (command, args) {
-		command = command.includes('/') ? command : await Subprocess.pathSearch(command);
-		
-		Zotero.debug("Running " + command + " " + args.map(arg => "'" + arg + "'").join(" "));
-		
-		let proc = await Subprocess.call({
-			command,
-			arguments: args,
-		});
-		let result = "";
-		let str;
-		while ((str = await proc.stdout.readString())) {
-			result += str;
-		}
-		return result;
-	},
-	
+
 	/**
 	 * Get string data from the clipboard
 	 * @param {String[]} mimeType MIME type of data to get
@@ -692,7 +805,8 @@ Zotero.Utilities.Internal = {
 	 * Returns a DOMDocument object not attached to any window
 	 */
 	"getDOMDocument": function() {
-		return new DOMParser()
+		return Components.classes["@mozilla.org/xmlextras/domparser;1"]
+			.createInstance(Components.interfaces.nsIDOMParser)
 			.parseFromString("<!DOCTYPE html><html></html>", "text/html");
 	},
 	
@@ -847,7 +961,8 @@ Zotero.Utilities.Internal = {
 	 */
 	blobToHTMLDocument: async function (blob, url) {
 		var responseText = await Zotero.Utilities.Internal.blobToText(blob);
-		var parser = new DOMParser();
+		var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+			.createInstance(Components.interfaces.nsIDOMParser);
 		var doc = parser.parseFromString(responseText, 'text/html');
 		return Zotero.HTTP.wrapDocument(doc, url);
 	},
@@ -1564,11 +1679,9 @@ Zotero.Utilities.Internal = {
 		var selectedIndex = 0;
 		var i = 0;
 		for (let library of libraries) {
-			let menuitem = menulist.ownerDocument.createXULElement('menuitem');
+			let menuitem = menulist.ownerDocument.createElement('menuitem');
 			menuitem.value = library.libraryID;
 			menuitem.setAttribute('label', library.name);
-			menuitem.setAttribute('data-editable', library.editable ? 'true' : 'false');
-			menuitem.setAttribute('data-filesEditable', library.filesEditable ? 'true' : 'false');
 			menupopup.appendChild(menuitem);
 			if (library.libraryID == selectedLibraryID) {
 				selectedIndex = i;
@@ -1582,13 +1695,14 @@ Zotero.Utilities.Internal = {
 	
 	
 	buildLibraryMenuHTML: function (select, libraries, selectedLibraryID) {
+		var namespaceURI = 'http://www.w3.org/1999/xhtml';
 		while (select.hasChildNodes()) {
 			select.removeChild(select.firstChild);
 		}
 		var selectedIndex = 0;
 		var i = 0;
 		for (let library of libraries) {
-			let option = select.ownerDocument.createElement('option');
+			let option = select.ownerDocument.createElementNS(namespaceURI, 'option');
 			option.setAttribute('value', library.libraryID);
 			option.setAttribute('data-editable', library.editable ? 'true' : 'false');
 			option.setAttribute('data-filesEditable', library.filesEditable ? 'true' : 'false');
@@ -1619,11 +1733,10 @@ Zotero.Utilities.Internal = {
 	createMenuForTarget: function(libraryOrCollection, elem, currentTarget, clickAction, disabledPred) {
 		var doc = elem.ownerDocument;
 		function _createMenuitem(label, value, icon, command, disabled) {
-			let menuitem = doc.createXULElement('menuitem');
+			let menuitem = doc.createElement('menuitem');
 			menuitem.setAttribute("label", label);
+			menuitem.setAttribute("type", "checkbox");
 			if (value == currentTarget) {
-				// type="checkbox" hides icon, so only set if checked
-				menuitem.setAttribute("type", "checkbox");
 				menuitem.setAttribute("checked", "true");
 			}
 			menuitem.setAttribute("value", value);
@@ -1635,7 +1748,7 @@ Zotero.Utilities.Internal = {
 		}	
 		
 		function _createMenu(label, value, icon, command) {
-			let menu = doc.createXULElement('menu');
+			let menu = doc.createElement('menu');
 			menu.setAttribute("label", label);
 			menu.setAttribute("value", value);
 			menu.setAttribute("image", icon);
@@ -1646,7 +1759,7 @@ Zotero.Utilities.Internal = {
 				}
 			});
 			menu.classList.add('menu-iconic');
-			let menupopup = doc.createXULElement('menupopup');
+			let menupopup = doc.createElement('menupopup');
 			menu.appendChild(menupopup);
 			return menu;
 		}
@@ -1689,7 +1802,7 @@ Zotero.Utilities.Internal = {
 		);
 		var menupopup = menu.firstChild;
 		menupopup.appendChild(menuitem);
-		menupopup.appendChild(doc.createXULElement('menuseparator'));
+		menupopup.appendChild(doc.createElement('menuseparator'));
 		for (let collection of collections) {
 			let collectionMenu = this.createMenuForTarget(
 				collection, elem, currentTarget, clickAction, disabledPred
@@ -1702,7 +1815,7 @@ Zotero.Utilities.Internal = {
 	
 	openPreferences: function (paneID, options = {}) {
 		if (typeof options == 'string') {
-			Zotero.debug("openPreferences() now takes an 'options' object -- update your code", 2);
+			Zotero.debug("ZoteroPane.openPreferences() now takes an 'options' object -- update your code", 2);
 			options = {
 				action: options
 			};
@@ -1725,7 +1838,8 @@ Zotero.Utilities.Internal = {
 				var win = enumerator.getNext();
 				win.focus();
 				if (paneID) {
-					win.Zotero_Preferences.navigation.value = paneID;
+					var pane = win.document.getElementsByAttribute('id', paneID)[0];
+					pane.parentElement.showPane(pane);
 					
 					// TODO: tab/action
 				}
@@ -1733,9 +1847,9 @@ Zotero.Utilities.Internal = {
 		}
 		if (!win) {
 			let args = [
-				'chrome://zotero/content/preferences/preferences.xhtml',
+				'chrome://zotero/content/preferences/preferences.xul',
 				'zotero-prefs',
-				'chrome,titlebar,centerscreen,resizable=yes',
+				'chrome,titlebar,toolbar,centerscreen',
 				io
 			];
 			
@@ -1882,7 +1996,7 @@ Zotero.Utilities.Internal = {
 	 */
 	setFontSize: function (rootElement) {
 		var size = Zotero.Prefs.get('fontSize');
-		rootElement.style.fontSize = rootElement.style['--zotero-font-size'] = size + 'em';
+		rootElement.style.fontSize = size + 'em';
 		if (size <= 1) {
 			size = 'small';
 		}
@@ -2091,47 +2205,11 @@ Zotero.Utilities.Internal = {
 		};
 	},
 
-	
-	/**
-	 * Splits a string by outer-most brackets (`{{` and '}}' by default, configurable).
-	 *
-	 * @param {string} input - The input string to split.
-	 * @returns {string[]} An array of strings split by outer-most brackets.
-	 */
-	splitByOuterBrackets: function(input, left = '{{', right = '}}') {
-		const result = [];
-		let startIndex = 0;
-		let depth = 0;
-
-		for (let i = 0; i < input.length; i++) {
-			if (input.slice(i, i + 2) === left) {
-				if (depth === 0) {
-					result.push(input.slice(startIndex, i));
-					startIndex = i;
-				}
-				depth++;
-			}
-			else if (input.slice(i, i + 2) === right) {
-				depth--;
-				if (depth === 0) {
-					result.push(input.slice(startIndex, i + 2));
-					startIndex = i + 2;
-				}
-			}
-		}
-
-		if (startIndex < input.length) {
-			result.push(input.slice(startIndex));
-		}
-
-		return result;
-	},
-
 	/**
 	 * A basic templating engine
 	 *
 	 * - 'if' statement does case-insensitive string comparison
-	 * -  functions can be called from if statements but must be wrapped in {{}} if arguments are passed (e.g. {{myFunction arg1="foo" arg2="bar"}})
+	 * - Spaces around '==' are necessary in 'if' statement
 	 *
 	 * Vars example:
 	 *  {
@@ -2157,108 +2235,44 @@ Zotero.Utilities.Internal = {
 	 * @returns {String} HTML
 	 */
 	generateHTMLFromTemplate: function (template, vars) {
-		const hyphenToCamel = varName => varName.replace(/-(.)/g, (_, g1) => g1.toUpperCase());
-
-		const getAttributes = (part) => {
-			let attrsRegexp = new RegExp(/(([\w-]*) *=+ *(['"])((\\\3|[^\3])*?)\3)/g);
-			let attrs = {};
-			let match;
-			while ((match = attrsRegexp.exec(part))) {
-				if (match[1]) { // if first alternative (i.e. argument with value wrapped in " or ') matched, even if value is empty
-					attrs[hyphenToCamel(match[2])] = match[4];
-				}
-			}
-			return attrs;
-		};
-
-		
-		const evaluateIdentifier = (ident, args = {}) => {
-			ident = hyphenToCamel(ident);
-
-			if (!(ident in vars)) {
-				return '';
-			}
-
-			const identValue = typeof vars[ident] === 'function' ? vars[ident](args) : vars[ident];
-
-			if (Array.isArray(identValue)) {
-				return identValue.length ? identValue.join(',') : '';
-			}
-
-			if (typeof identValue !== 'string') {
-				throw new Error(`Identifier "${ident}" does not evaluate to a string`);
-			}
-			
-			return identValue;
-		};
-		
-		// evaluates extracted (i.e. without brackets) statement (e.g. `sum a="1" b="2"`) into a string value
-		const evaluateStatement = (statement) => {
-			statement = statement.trim();
-			const operator = statement.split(' ', 1)[0].trim();
-			const args = statement.slice(operator.length).trim();
-
-			return evaluateIdentifier(operator, getAttributes(args));
-		};
-
-		// splits raw (i.e. bracketed) statement (e.g. `{{ sum a="1" b="2" }}) into operator and arguments (e.g. ['sum', 'a="1" b="2"'])
-		const splitStatement = (statement) => {
-			statement = statement.slice(2, -2).trim();
-			const operator = statement.split(' ', 1)[0].trim();
-			const args = statement.slice(operator.length).trim();
-			return [operator, args];
-		};
-
-		// evaluates a condition (e.g. `a == "b"`) into a boolean value
-		const evaluateCondition = (condition) => {
-			const comparators = ['==', '!='];
-			condition = condition.trim();
-
-			// match[1] if left is statement, match[3] if left is literal, match[4] if left is identifier
-			// match[6] if right is statement, match[8] if right is literal, match[9] if right is identifier
-			// match[2] and match[7] are used to match the quotes around the literal (and then check that the other quote is the same)
-			const match = condition.match(new RegExp(String.raw`(?:{{(.*?)}}|(?:(['"])(.*?)\2)|([^ ]+)) *(${comparators.join('|')}) *(?:{{(.*?)}}|(?:(['"])(.*?)\7)|([^ ]+))`));
-			
-			if (!match) {
-				// condition is a statement or identifier without a comparator
-				if (condition.startsWith('{{')) {
-					const [operator, args] = splitStatement(condition);
-					return !!evaluateIdentifier(operator, getAttributes(args));
-				}
-				return !!evaluateIdentifier(condition);
-			}
-
-			const left = match[1] ? evaluateStatement(match[1]) : match[3] ?? evaluateIdentifier(match[4]) ?? '';
-			const comparator = match[5];
-			const right = match[6] ? evaluateStatement(match[6]) : match[8] ?? evaluateIdentifier(match[9]) ?? '';
-
-			switch (comparator) {
-				default:
-				case '==':
-					return left.toLowerCase() == right.toLowerCase();
-				case '!=':
-					return left.toLowerCase() != right.toLowerCase();
-			}
-		};
-
+		let levels = [{ condition: true }];
 		let html = '';
-		const levels = [{ condition: true }];
-		const parts = this.splitByOuterBrackets(template);
-
+		let parts = template.split(/{{|}}/);
 		for (let i = 0; i < parts.length; i++) {
 			let part = parts[i];
 			let level = levels[levels.length - 1];
-
-			if (part.startsWith('{{')) {
-				const [operator, args] = splitStatement(part);
-			
+			if (i % 2 === 1) {
+				let operator = part.split(' ').filter(x => x)[0];
+				// Get arguments that are used for 'if'
+				let args = [];
+				let match = part.match(/(["'][^"|^']+["']|[^\s"']+)/g);
+				if (match) {
+					args = match.map(x => x.replace(/['"](.*)['"]/, '$1')).slice(1);
+				}
 				if (operator === 'if') {
-					level = { condition: false, executed: false, parentCondition: levels[levels.length - 1].condition };
+					level = { condition: false, executed: false, parentCondition: levels[levels.length-1].condition };
 					levels.push(level);
 				}
 				if (['if', 'elseif'].includes(operator)) {
 					if (!level.executed) {
-						level.condition = level.parentCondition && evaluateCondition(args);
+						level.condition = level.parentCondition && (
+							args[2]
+								// If string variable is equal to the provided string
+								? vars[args[0]].toLowerCase() == args[2].toLowerCase()
+								: (
+									Array.isArray(vars[args[0]])
+										// Is array non empty
+										? !!vars[args[0]].length
+										: (
+											typeof vars[args[0]] === 'function'
+												// If function returns a value (only string is supported)
+												// Note: To keep things simple, this doesn't support function attributes
+												? !!vars[args[0]]({})
+												// If string variable exists
+												: !!vars[args[0]]
+										)
+								)
+						);
 						level.executed = level.condition;
 					}
 					else {
@@ -2276,8 +2290,18 @@ Zotero.Utilities.Internal = {
 					continue;
 				}
 				if (level.condition) {
-					const attrs = getAttributes(part);
-					html += evaluateIdentifier(operator, attrs);
+					// Get attributes i.e. join=" #"
+					let attrsRegexp = new RegExp(/((\w*) *=+ *(['"])((\\\3|[^\3])*?)\3)|((\w*) *=+ *(\w*))/g);
+					let attrs = {};
+					while ((match = attrsRegexp.exec(part))) {
+						if (match[4]) {
+							attrs[match[2]] = match[4];
+						}
+						else {
+							attrs[match[7]] = match[8];
+						}
+					}
+					html += (typeof vars[operator] === 'function' ? vars[operator](attrs) : vars[operator]) || '';
 				}
 			}
 			else if (level.condition) {
@@ -2285,46 +2309,6 @@ Zotero.Utilities.Internal = {
 			}
 		}
 		return html;
-	},
-
-	/**
-	 * Open an element's <menupopup> child (as a native context menu on macOS).
-	 *
-	 * @param {XULElement} element
-	 * @return {Boolean} If a <menupopup> child was found and opened
-	 */
-	showNativeElementPopup(element) {
-		let popup = element.hasAttribute('popup')
-			? element.getRootNode().getElementById(element.getAttribute('popup'))
-			: element.querySelector(':scope > menupopup');
-		if (popup) {
-			if (Zotero.isMac) {
-				let rect = element.getBoundingClientRect();
-				let win = element.ownerDocument.defaultView;
-				let dir = win.getComputedStyle(element).direction;
-				popup.openPopupAtScreen(
-					win.screenX + (dir == 'rtl' ? rect.right : rect.left),
-					win.screenY + rect.bottom,
-					true
-				);
-			}
-			else {
-				popup.openPopup(element, 'after_start', 0, 0, true, false);
-			}
-			element.setAttribute('open', true);
-
-			let handler = (event) => {
-				if (event.target == popup) {
-					element.setAttribute('open', false);
-					popup.removeEventListener('popuphiding', handler);
-				}
-			};
-			popup.addEventListener('popuphiding', handler);
-			
-			return true;
-		}
-		
-		return false;
 	}
 }
 
@@ -2368,7 +2352,8 @@ Zotero.Utilities.Internal.activate = new function() {
 	 * Bring a window to the foreground by interfacing directly with X11
 	 */
 	function _X11BringToForeground(win, intervalID) {
-		var windowTitle = win.getInterface(Ci.nsIWebNavigation).title;
+		var windowTitle = win.QueryInterface(Ci.nsIInterfaceRequestor)
+			.getInterface(Ci.nsIWebNavigation).QueryInterface(Ci.nsIBaseWindow).title;
 		
 		var x11Window = _X11FindWindow(_x11RootWindow, windowTitle);
 		if(!x11Window) return;

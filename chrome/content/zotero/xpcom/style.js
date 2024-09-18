@@ -336,7 +336,8 @@ Zotero.Styles = new function() {
 		var existingFile, destFile, source;
 		
 		// First, parse style and make sure it's valid XML
-		var parser = new DOMParser(),
+		var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+				.createInstance(Components.interfaces.nsIDOMParser),
 			doc = parser.parseFromString(style, "application/xml");
 		
 		var styleID = Zotero.Utilities.xpathText(doc, '/csl:style/csl:info[1]/csl:id[1]',
@@ -564,7 +565,7 @@ Zotero.Styles = new function() {
 		for (let i=0; i<menulist.itemCount; i++) {
 			let item = menulist.getItemAtIndex(i);
 			if (item.getAttributeNS('zotero:', 'customLocale')) {
-				item.remove();
+				menulist.removeItemAt(i);
 				i--;
 				continue;
 			}
@@ -594,11 +595,8 @@ Zotero.Styles = new function() {
 		
 		// Make sure the locale we want to select is in the menulist
 		if (availableLocales.indexOf(selectLocale) == -1) {
-			var menuitem = menulist.ownerDocument.createXULElement('menuitem');
-			menuitem.setAttribute('label', selectLocale);
-			menuitem.setAttribute('value', selectLocale);
-			menuitem.setAttributeNS('zotero:', 'customLocale', true);
-			menulist.append(menuitem);
+			let customLocale = menulist.insertItemAt(0, selectLocale, selectLocale);
+			customLocale.setAttributeNS('zotero:', 'customLocale', true);
 		}
 		
 		return menulist.value = selectLocale;
@@ -628,7 +626,8 @@ Zotero.Style = function (style, path) {
 	
 	this.type = "csl";
 	
-	var parser = new DOMParser(),
+	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+			.createInstance(Components.interfaces.nsIDOMParser),
 		doc = parser.parseFromString(style, "application/xml");
 	if(doc.documentElement.localName === "parsererror") {
 		throw new Error("File is not valid XML");
@@ -738,7 +737,8 @@ Zotero.Style.prototype.getCiteProc = function(locale, format, automaticJournalAb
 		// get XSLT processor from updateCSL.xsl file
 		if(!Zotero.Styles.xsltProcessor) {
 			let xsl = Zotero.File.getContentsFromURL("chrome://zotero/content/updateCSL.xsl");
-			let updateXSLT = new DOMParser()
+			let updateXSLT = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+				.createInstance(Components.interfaces.nsIDOMParser)
 				.parseFromString(xsl, "application/xml");
 			
 			// XSLTProcessor is no longer available in XPCOM, so get from hidden window
@@ -750,12 +750,14 @@ Zotero.Style.prototype.getCiteProc = function(locale, format, automaticJournalAb
 		}
 		
 		// read style file as DOM XML
-		let styleDOMXML = new DOMParser()
+		let styleDOMXML = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+			.createInstance(Components.interfaces.nsIDOMParser)
 			.parseFromString(this.getXML(), "text/xml");
 		
 		// apply XSLT and serialize output
 		let newDOMXML = Zotero.Styles.xsltProcessor.transformToDocument(styleDOMXML);
-		var xml = new XMLSerializer().serializeToString(newDOMXML);
+		var xml = Components.classes["@mozilla.org/xmlextras/xmlserializer;1"]
+			.createInstance(Components.interfaces.nsIDOMSerializer).serializeToString(newDOMXML);
 	} else {
 		var xml = this.getXML();
 	}
@@ -807,7 +809,8 @@ Zotero.Style.prototype.getCiteProc = function(locale, format, automaticJournalAb
  * Until https://github.com/citation-style-language/styles/issues/6151
  */
 Zotero.Style.prototype._eventToEventTitle = function (xml) {
-	var parser = new DOMParser();
+	var parser = Components.classes["@mozilla.org/xmlextras/domparser;1"]
+		.createInstance(Components.interfaces.nsIDOMParser);
 	var doc = parser.parseFromString(xml, "text/xml");
 	// Ignore styles that already include `event-title`
 	if (doc.querySelector('[variable*="event-title"]')) {

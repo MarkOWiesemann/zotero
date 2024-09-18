@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Zotero eelistused">
 
-<!ENTITY zotero.preferences.helpButton.label "Abi">
-
 <!ENTITY zotero.preferences.default "Vaikimisi:">
 <!ENTITY zotero.preferences.items "kirjet">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Üldine">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "File Handling">
 <!ENTITY zotero.preferences.automaticSnapshots "Teha momentülesvõtted kui luuakse kirjeid lehekülgedest">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Kirje lisamisel salvestada automaatselt seotud PDF-id ja teised elemendid">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Automatically retrieve metadata for PDFs">
+<!ENTITY zotero.preferences.autoRenameFiles "Automatically rename attachment files using parent metadata">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Rename linked files">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Open PDFs using">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "System Default">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Automaatselt eemaldada kirjed prügikastist, mis on kustutatud rohkem kui">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "päeva tagasi">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Algseadistada failide sünkroonimise ajalugu">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Compare all attachment files with the storage service">
 <!ENTITY zotero.preferences.sync.reset "Algseadistada">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Reset…">
 
 

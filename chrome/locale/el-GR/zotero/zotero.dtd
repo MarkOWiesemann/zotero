@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Απομάκρυνση στοιχείου...">
 <!ENTITY zotero.toolbar.newLibrary.label "Νέα βιβλιοθήκη">
 <!ENTITY zotero.toolbar.newCollection.label "Νέα συλλογή...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Σημείωση τροφοδοσίας ως αναγνωσμένης">
 <!ENTITY zotero.toolbar.newGroup "Νέα ομάδα...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Νέα δευτερεύουσα συλλογή...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Νέα αποθηκευμένη αναζήτηση...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Νέα τροφοδότηση">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Από URL...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "Από OPML...">
+<!ENTITY zotero.toolbar.feeds.refresh "Ανανέωση τροφοδότησης">
 <!ENTITY zotero.toolbar.feeds.edit "Επεξεργασία τροφοδότησης...">
 
 <!ENTITY zotero.item.add "Προσθήκη">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "Μετασχηματισμός κειμένου">
 <!ENTITY zotero.item.textTransform.titlecase "Μορφή γραμμάτων τίτλου">
 <!ENTITY zotero.item.textTransform.sentencecase "Μορφή γραμμάτων πρότασης">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Εναλλαγή πρώτου ονόματος/επιθέτου">
 <!ENTITY zotero.item.viewOnline "Προβολή online">
 <!ENTITY zotero.item.copyAsURL "Αντιγραφή ως URL">
 <!ENTITY zotero.item.deletePermanently "Μόνιμη διαγραφή...;">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Απόδοση χρώματος...">
 <!ENTITY zotero.tagSelector.renameTag "Μετονομασία ετικέτας...">
 <!ENTITY zotero.tagSelector.deleteTag "Διαγραφή ετικέτας...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "Επιλέξτε χρώμα ετικέτας και θέση">
 <!ENTITY zotero.tagColorChooser.color "Χρώμα:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Εισαγωγή">
 <!ENTITY zotero.import.whereToImportFrom "Από πού θέλετε να εισαγάγετε;">
 <!ENTITY zotero.import.source.file "Ένα αρχείο (BibTeX, RIS, Zotero RDF, κλπ.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "Εισαγωγή ...">
 <!ENTITY zotero.import.database "Βάση Δεδομένων">
 <!ENTITY zotero.import.lastModified "Τελευταία Τροποποίηση">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Τοποθετήστε τις εισαγόμενες συλλογές και τα αντικείμενα σε νέα συλλογή">
 <!ENTITY zotero.import.fileHandling "Χειρισμός Αρχείων">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Εξαγωγή...">
 <!ENTITY zotero.exportOptions.format.label "Μορφή:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "No Spreads">
 <!ENTITY zotero.pdfReader.oddSpreads "Odd Spreads">
 <!ENTITY zotero.pdfReader.evenSpreads "Even Spreads">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom In">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom Out">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatically Resize">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom to Page Width">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

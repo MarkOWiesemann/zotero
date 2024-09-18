@@ -30,9 +30,10 @@ var React = require('react');
 var ReactDOM = require('react-dom');
 import TabBar from 'components/tabBar';
 
-// Reduce loaded tabs limit if the system has 8 GB or less memory.
+// Reduce loaded tabs limit if the system has 8 GB or less memory, or it's running
+// on Windows which means it doesn't support more than 3 GB
 // TODO: Revise this after upgrading to Zotero 7
-const MAX_LOADED_TABS = Services.sysinfo.getProperty("memsize") / 1024 / 1024 / 1024 <= 8 ? 3 : 5;
+const MAX_LOADED_TABS = Services.sysinfo.getProperty("memsize") / 1024 / 1024 / 1024 <= 8 || Zotero.isWin ? 3 : 5;
 const UNLOAD_UNUSED_AFTER = 86400; // 24h
 
 var Zotero_Tabs = new function () {
@@ -50,10 +51,6 @@ var Zotero_Tabs = new function () {
 
 	Object.defineProperty(this, 'deck', {
 		get: () => document.getElementById('tabs-deck')
-	});
-
-	Object.defineProperty(this, 'numTabs', {
-		get: () => this._tabs.length
 	});
 
 	this._tabBarRef = React.createRef();
@@ -83,14 +80,8 @@ var Zotero_Tabs = new function () {
 			selected: tab.id == this._selectedID,
 			iconBackgroundImage: tab.iconBackgroundImage
 		})));
-		// Disable File > Close menuitem if multiple tabs are open
-		const multipleTabsOpen = this._tabs.length > 1;
-		document.getElementById('cmd_close').setAttribute('disabled', multipleTabsOpen);
 		var { tab } = this._getTab(this._selectedID);
-		if (!tab) {
-			return;
-		}
-		document.title = (tab.title.length ? tab.title + ' - ' : '') + Zotero.appName;
+		document.title = (tab.title.length ? tab.title + ' - ' : '') + 'Zotero';
 		this._updateTabBar();
 		// Hide any tab `title` tooltips that might be open
 		window.Zotero_Tooltip.stop();
@@ -156,7 +147,6 @@ var Zotero_Tabs = new function () {
 							null,
 							{
 								title: tab.title,
-								tabIndex: i,
 								openInBackground: !tab.selected,
 								secondViewState: tab.data.secondViewState
 							}
@@ -188,7 +178,7 @@ var Zotero_Tabs = new function () {
 	 * @param {Function} onClose
 	 * @return {{ id: string, container: XULElement}} id - tab id, container - a new tab container created in the deck
 	 */
-	this.add = function ({ id, type, data, title, index, select, onClose, preventJumpback }) {
+	this.add = function ({ id, type, data, title, index, select, onClose }) {
 		if (typeof type != 'string') {
 		}
 		if (typeof title != 'string') {
@@ -201,7 +191,7 @@ var Zotero_Tabs = new function () {
 			throw new Error(`'onClose' should be a function (was ${typeof onClose})`);
 		}
 		id = id || 'tab-' + Zotero.Utilities.randomString();
-		var container = document.createXULElement('vbox');
+		var container = document.createElement('vbox');
 		container.id = id;
 		this.deck.appendChild(container);
 		var tab = { id, type, title, data, onClose };
@@ -212,9 +202,7 @@ var Zotero_Tabs = new function () {
 		if (select) {
 			let previousID = this._selectedID;
 			this.select(id);
-			if (!preventJumpback) {
-				this._prevSelectedID = previousID;
-			}
+			this._prevSelectedID = previousID;
 		}
 		return { id, container };
 	};
@@ -270,7 +258,7 @@ var Zotero_Tabs = new function () {
 		var closedIDs = [];
 		var tmpTabs = this._tabs.slice();
 		for (var id of ids) {
-			let { tab, tabIndex } = this._getTab(id);
+			var { tab, tabIndex } = this._getTab(id);
 			if (!tab) {
 				continue;
 			}
@@ -280,22 +268,13 @@ var Zotero_Tabs = new function () {
 			if (tab.id == this._prevSelectedID) {
 				this._prevSelectedID = null;
 			}
-			tabIndex = this._tabs.findIndex(x => x.id === id);
 			this._tabs.splice(tabIndex, 1);
+			document.getElementById(tab.id).remove();
 			if (tab.onClose) {
 				tab.onClose();
 			}
 			historyEntry.push({ index: tmpTabs.indexOf(tab), data: tab.data });
 			closedIDs.push(id);
-
-			setTimeout(() => {
-				document.getElementById(tab.id).remove();
-				// For unknown reason fx102, unlike 60, sometimes doesn't automatically update selected index
-				let selectedIndex = Array.from(this.deck.children).findIndex(x => x.id == this._selectedID);
-				if (this.deck.selectedIndex !== selectedIndex) {
-					this.deck.selectedIndex = selectedIndex;
-				}
-			});
 		}
 		this._history.push(historyEntry);
 		Zotero.Notifier.trigger('close', 'tab', [closedIDs], true);
@@ -375,9 +354,7 @@ var Zotero_Tabs = new function () {
 		}
 		if (this._selectedID) {
 			let { tab: selectedTab } = this._getTab(this._selectedID);
-			if (selectedTab) {
-				selectedTab.timeUnselected = Zotero.Date.getUnixTimestamp();
-			}
+			selectedTab.timeUnselected = Zotero.Date.getUnixTimestamp();
 		}
 		if (tab.type === 'reader-unloaded') {
 			this.close(tab.id);
@@ -386,8 +363,7 @@ var Zotero_Tabs = new function () {
 				title: tab.title,
 				tabIndex,
 				allowDuplicate: true,
-				secondViewState: tab.data.secondViewState,
-				preventJumpback: true
+				secondViewState: tab.data.secondViewState
 			});
 			return;
 		}
@@ -427,10 +403,7 @@ var Zotero_Tabs = new function () {
 			}
 		}, 500);
 		tab.timeSelected = Zotero.Date.getUnixTimestamp();
-		// Without `setTimeout` the tab closing that happens in `unloadUnusedTabs` results in
-		// tabs deck selection index bigger than the deck children count. It feels like something
-		// isn't update synchronously
-		setTimeout(() => this.unloadUnusedTabs());
+		this.unloadUnusedTabs();
 	};
 
 	this.unload = function (id) {
@@ -499,7 +472,7 @@ var Zotero_Tabs = new function () {
 		var { tab, tabIndex } = this._getTab(id);
 		window.Zotero_Tooltip.stop();
 		let menuitem;
-		let popup = document.createXULElement('menupopup');
+		let popup = document.createElement('menupopup');
 		document.querySelector('popupset').appendChild(popup);
 		popup.addEventListener('popuphidden', function (event) {
 			if (event.target === popup) {
@@ -508,12 +481,12 @@ var Zotero_Tabs = new function () {
 		});
 		if (id !== 'zotero-pane') {
 			// Show in library
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('general.showInLibrary'));
 			menuitem.addEventListener('command', () => {
-				let { tab } = this._getTab(id);
-				if (tab && (tab.type === 'reader' || tab.type === 'reader-unloaded')) {
-					let itemID = tab.data.itemID;
+				var reader = Zotero.Reader.getByTabID(id);
+				if (reader) {
+					let itemID = reader.itemID;
 					let item = Zotero.Items.get(itemID);
 					if (item && item.parentItemID) {
 						itemID = item.parentItemID;
@@ -524,13 +497,13 @@ var Zotero_Tabs = new function () {
 			});
 			popup.appendChild(menuitem);
 			// Move tab
-			let menu = document.createXULElement('menu');
+			let menu = document.createElement('menu');
 			menu.setAttribute('label', Zotero.getString('tabs.move'));
-			let menupopup = document.createXULElement('menupopup');
+			let menupopup = document.createElement('menupopup');
 			menu.append(menupopup);
 			popup.appendChild(menu);
 			// Move to start
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('tabs.moveToStart'));
 			menuitem.setAttribute('disabled', tabIndex == 1);
 			menuitem.addEventListener('command', () => {
@@ -538,7 +511,7 @@ var Zotero_Tabs = new function () {
 			});
 			menupopup.appendChild(menuitem);
 			// Move to end
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('tabs.moveToEnd'));
 			menuitem.setAttribute('disabled', tabIndex == this._tabs.length - 1);
 			menuitem.addEventListener('command', () => {
@@ -546,20 +519,20 @@ var Zotero_Tabs = new function () {
 			});
 			menupopup.appendChild(menuitem);
 			// Move to new window
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('tabs.moveToWindow'));
 			menuitem.setAttribute('disabled', false);
 			menuitem.addEventListener('command', () => {
-				let { tab } = this._getTab(id);
-				if (tab && (tab.type === 'reader' || tab.type === 'reader-unloaded')) {
+				var reader = Zotero.Reader.getByTabID(id);
+				if (reader) {
 					this.close(id);
-					let { itemID, secondViewState } = tab.data;
-					Zotero.Reader.open(itemID, null, { openInWindow: true, secondViewState });
+					let { secondViewState } = tab.data;
+					Zotero.Reader.open(reader.itemID, null, { openInWindow: true, secondViewState });
 				}
 			});
 			menupopup.appendChild(menuitem);
 			// Duplicate tab
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('tabs.duplicate'));
 			menuitem.addEventListener('command', () => {
 				if (tab.data.itemID) {
@@ -570,11 +543,11 @@ var Zotero_Tabs = new function () {
 			});
 			popup.appendChild(menuitem);
 			// Separator
-			popup.appendChild(document.createXULElement('menuseparator'));
+			popup.appendChild(document.createElement('menuseparator'));
 		}
 		// Close
 		if (id != 'zotero-pane') {
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('general.close'));
 			menuitem.addEventListener('command', () => {
 				this.close(id);
@@ -583,7 +556,7 @@ var Zotero_Tabs = new function () {
 		}
 		// Close other tabs
 		if (!(this._tabs.length == 2 && id != 'zotero-pane')) {
-			menuitem = document.createXULElement('menuitem');
+			menuitem = document.createElement('menuitem');
 			menuitem.setAttribute('label', Zotero.getString('tabs.closeOther'));
 			menuitem.addEventListener('command', () => {
 				this.close(this._tabs.slice(1).filter(x => x.id != id).map(x => x.id));
@@ -591,7 +564,7 @@ var Zotero_Tabs = new function () {
 			popup.appendChild(menuitem);
 		}
 		// Undo close
-		menuitem = document.createXULElement('menuitem');
+		menuitem = document.createElement('menuitem');
 		menuitem.setAttribute(
 			'label',
 			Zotero.getString(

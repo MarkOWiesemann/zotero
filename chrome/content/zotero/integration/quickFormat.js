@@ -22,13 +22,12 @@
     
     ***** END LICENSE BLOCK *****
 */
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-Services.scriptloader.loadSubScript("chrome://zotero/content/customElements.js", this);
+Components.utils.import("resource://gre/modules/Services.jsm");
 
 var Zotero_QuickFormat = new function () {
 	const pixelRe = /^([0-9]+)px$/
-	const specifiedLocatorRe = /^(?:,? *(p{1,2})(?:\. *| *)|:)([0-9\-–]+) *$/;
-	const yearRe = /,? *([0-9]+(?: *[-–] *[0-9]+)?) *(B[. ]*C[. ]*(?:E[. ]*)?|A[. ]*D[. ]*|C[. ]*E[. ]*)?$/i;
+	const specifiedLocatorRe = /^(?:,? *(p{1,2})(?:\. *| *)|:)([0-9\-]+) *$/;
+	const yearRe = /,? *([0-9]+) *(B[. ]*C[. ]*(?:E[. ]*)?|A[. ]*D[. ]*|C[. ]*E[. ]*)?$/i;
 	const locatorRe = / (?:,? *(p{0,2})\.?|(\:)) *([0-9\-–]+)$/i;
 	const creatorSplitRe = /(?:,| *(?:and|\&)) +/;
 	const charRe = /[\w\u007F-\uFFFF]/;
@@ -123,7 +122,7 @@ var Zotero_QuickFormat = new function () {
 					let locatorLabel = Zotero.Cite.getLocatorString(locator);
 
 					// add to list of labels
-					var child = document.createXULElement("menuitem");
+					var child = document.createElement("menuitem");
 					child.setAttribute("value", locator);
 					child.setAttribute("label", locatorLabel);
 					labelList.appendChild(child);
@@ -157,15 +156,12 @@ var Zotero_QuickFormat = new function () {
 			if (event.target !== document) return;
 			// make sure we are visible
 			let resizePromise = (async function () {
-				let screenX = window.screenX, screenY = window.screenY, i = 5;
-				while (!screenX && i--) {
-					await new Promise(resolve => window.requestAnimationFrame(resolve));
-					screenX = window.screenX;
-					screenY = window.screenY;
-				}
+				await Zotero.Promise.delay();
 				window.resizeTo(window.outerWidth, qfb.clientHeight);
-				var xRange = [window.screen.availLeft, window.screen.left + window.screen.width - window.outerWidth];
-				var yRange = [window.screen.availTop, window.screen.top + window.screen.height - window.outerHeight];
+				var screenX = window.screenX;
+				var screenY = window.screenY;
+				var xRange = [window.screen.availLeft, window.screen.width - window.outerWidth];
+				var yRange = [window.screen.availTop, window.screen.height - window.outerHeight];
 				if (screenX < xRange[0] || screenX > xRange[1] || screenY < yRange[0] || screenY > yRange[1]) {
 					var targetX = Math.max(Math.min(screenX, xRange[1]), xRange[0]);
 					var targetY = Math.max(Math.min(screenY, yRange[1]), yRange[0]);
@@ -183,16 +179,11 @@ var Zotero_QuickFormat = new function () {
 			// load citation data
 			if (io.citation.citationItems.length) {
 				// hack to get spacing right
-				let event = new KeyboardEvent(
-					"keypress",
-					{
-						key: " ",
-						code: "Space",
-						bubbles: true,
-						cancelable: true,
-					}
-				);
-				qfe.dispatchEvent(event);
+				var evt = qfiDocument.createEvent("KeyboardEvent");
+				evt.initKeyEvent("keypress", true, true, qfiWindow,
+					0, 0, 0, 0,
+					0, " ".charCodeAt(0));
+				qfe.dispatchEvent(evt);
 				await resizePromise;
 				var node = qfe.firstChild;
 				node.nodeValue = "";
@@ -239,7 +230,7 @@ var Zotero_QuickFormat = new function () {
 	 */
 	function _getEditorContent(clear) {
 		var node = _getCurrentEditorTextNode();
-		return node ? node.wholeText.trim() : false;
+		return node ? node.wholeText : false;
 	}
 
 	/**
@@ -626,7 +617,7 @@ var Zotero_QuickFormat = new function () {
 			
 			var publicationTitle = item.getField("publicationTitle", false, true);
 			if(publicationTitle) {
-				var label = document.createXULElement("label");
+				var label = document.createElement("label");
 				label.setAttribute("value", publicationTitle);
 				label.setAttribute("crop", "end");
 				label.style.fontStyle = "italic";
@@ -658,7 +649,7 @@ var Zotero_QuickFormat = new function () {
 				if(i != 0) str += ", ";
 
 				if(typeof node === "object") {
-					var label = document.createXULElement("label");
+					var label = document.createElement("label");
 					label.setAttribute("value", str);
 					label.setAttribute("crop", "end");
 					infoHbox.appendChild(label);
@@ -672,7 +663,7 @@ var Zotero_QuickFormat = new function () {
 			if(nodes.length && (!str.length || str[str.length-1] !== ".")) str += ".";	
 		}
 		
-		var label = document.createXULElement("label");
+		var label = document.createElement("label");
 		label.setAttribute("value", str);
 		label.setAttribute("crop", "end");
 		label.setAttribute("flex", "1");
@@ -683,18 +674,18 @@ var Zotero_QuickFormat = new function () {
 	 * Creates an item to be added to the item list
 	 */
 	function _buildListItem(item) {
-		var titleNode = document.createXULElement("label");
+		var titleNode = document.createElement("label");
 		titleNode.setAttribute("class", "citation-dialog title");
 		titleNode.setAttribute("flex", "1");
 		titleNode.setAttribute("crop", "end");
 		titleNode.setAttribute("value", item.getDisplayTitle());
 		
-		var infoNode = document.createXULElement("hbox");
+		var infoNode = document.createElement("hbox");
 		infoNode.setAttribute("class", "citation-dialog info");
 		_buildItemDescription(item, infoNode);
 		
 		// add to rich list item
-		var rll = document.createXULElement("richlistitem");
+		var rll = document.createElement("richlistitem");
 		rll.setAttribute("orient", "vertical");
 		rll.setAttribute("class", "citation-dialog item");
 		rll.setAttribute("zotero-item", item.cslItemID ? item.cslItemID : item.id);
@@ -709,14 +700,14 @@ var Zotero_QuickFormat = new function () {
 	 * Creates a list separator to be added to the item list
 	 */
 	function _buildListSeparator(labelText, loading) {
-		var titleNode = document.createXULElement("label");
+		var titleNode = document.createElement("label");
 		titleNode.setAttribute("class", "citation-dialog separator-title");
 		titleNode.setAttribute("flex", "1");
 		titleNode.setAttribute("crop", "end");
 		titleNode.setAttribute("value", labelText);
 		
 		// add to rich list item
-		var rll = document.createXULElement("richlistitem");
+		var rll = document.createElement("richlistitem");
 		rll.setAttribute("orient", "vertical");
 		rll.setAttribute("disabled", true);
 		rll.setAttribute("class", loading ? "citation-dialog loading" : "citation-dialog separator");
@@ -953,7 +944,7 @@ var Zotero_QuickFormat = new function () {
 			}
 			
 			if(!panelFrameHeight) {
-				panelFrameHeight = referencePanel.getBoundingClientRect().height - referencePanel.clientHeight;
+				panelFrameHeight = referencePanel.boxObject.height - referencePanel.clientHeight;
 				var computedStyle = window.getComputedStyle(referenceBox, null);
 				for(var attr of ["border-top-width", "border-bottom-width"]) {
 					var val = computedStyle.getPropertyValue(attr);
@@ -1130,10 +1121,11 @@ var Zotero_QuickFormat = new function () {
 	 * Called when progress changes
 	 */
 	function _onProgress(percent) {
-		var meter = document.querySelector(".citation-dialog.progress-meter");
+		var meter = document.querySelector(".citation-dialog .progress-meter");
 		if(percent === null) {
-			meter.removeAttribute('value');
+			meter.mode = "undetermined";
 		} else {
+			meter.mode = "determined";
 			meter.value = Math.round(percent);
 		}
 	}
@@ -1209,7 +1201,7 @@ var Zotero_QuickFormat = new function () {
 		var offset = range.startOffset,
 			childNodes = qfe.childNodes,
 			node = childNodes[offset-(right ? 0 : 1)];
-		if (node && node.dataset && node.dataset.citationItem) return node;
+		if (node && node.dataset.citationItem) return node;
 		return null;
 	}
 
@@ -1399,23 +1391,15 @@ var Zotero_QuickFormat = new function () {
 	var _onBubbleDrop = Zotero.Promise.coroutine(function* (event) {
 		event.preventDefault();
 		event.stopPropagation();
-		if (!dragging) return;
 
 		// Find old position in list
 		var oldPosition = _getBubbleIndex(dragging);
 		
 		// Move bubble
 		var range = document.createRange();
-		// Prevent dragging out of qfe
-		if (event.target === qfe) {
-			range.setStartAfter(qfe.childNodes[qfe.childNodes.length-1]);
-		}
-		else {
-			range.setStartAfter(event.target);
-		}
+		range.setStartAfter(event.rangeParent);
 		dragging.parentNode.removeChild(dragging);
 		var bubble = _insertBubble(JSON.parse(dragging.dataset.citationItem), range);
-		dragging = null;
 
 		// If moved out of order, turn off "Keep Sources Sorted"
 		if(io.sortable && keepSorted && keepSorted.hasAttribute("checked") && oldPosition !== -1 &&
@@ -1443,12 +1427,11 @@ var Zotero_QuickFormat = new function () {
 		event.preventDefault();
 
 		var str = Zotero.Utilities.Internal.getClipboard("text/unicode");
-		if (str) {
-			isPaste = true;
+		if(str) {
 			var selection = qfiWindow.getSelection();
 			var range = selection.getRangeAt(0);
 			range.deleteContents();
-			range.insertNode(qfiDocument.createTextNode(str.replace(/[\r\n]/g, " ").trim()));
+			range.insertNode(document.createTextNode(str.replace(/[\r\n]/g, " ").trim()));
 			range.collapse(false);
 			_resetSearchTimer();
 		}
@@ -1522,7 +1505,7 @@ var Zotero_QuickFormat = new function () {
 		_updateCitationObject();
 		var newWindow = window.newWindow = Components.classes["@mozilla.org/embedcomp/window-watcher;1"]
 			.getService(Components.interfaces.nsIWindowWatcher)
-			.openWindow(null, 'chrome://zotero/content/integration/addCitationDialog.xhtml',
+			.openWindow(null, 'chrome://zotero/content/integration/addCitationDialog.xul',
 			'', 'chrome,centerscreen,resizable', io);
 		newWindow.addEventListener("focus", function() {
 			newWindow.removeEventListener("focus", arguments.callee, true);

@@ -54,7 +54,7 @@
 
 <!ENTITY zotero.toolbar.duplicate.label "Duplicaten tonen">
 <!ENTITY zotero.collections.showUnfiledItems "Ongesorteerde items tonen">
-<!ENTITY zotero.collections.showRetractedItems "Ingetrokken items tonen">
+<!ENTITY zotero.collections.showRetractedItems "Teruggetrokken items tonen">
 
 <!ENTITY zotero.items.itemType "Type item">
 <!ENTITY zotero.items.creator_column "Maker">
@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Item verwijderen…">
 <!ENTITY zotero.toolbar.newLibrary.label "Nieuwe bibliotheek">
 <!ENTITY zotero.toolbar.newCollection.label "Nieuwe verzameling…">
+<!ENTITY zotero.toolbar.markFeedRead.label "Markeer feed als gelezen">
 <!ENTITY zotero.toolbar.newGroup "Nieuwe groep…">
 <!ENTITY zotero.toolbar.newSubcollection.label "Nieuwe deelverzameling…">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Nieuwe bewaarde zoekopdracht…">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Nieuwe feed">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Van URL…">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "Van OPML…">
+<!ENTITY zotero.toolbar.feeds.refresh "Feed vernieuwen">
 <!ENTITY zotero.toolbar.feeds.edit "Feed bewerken…">
 
 <!ENTITY zotero.item.add "Toevoegen">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "Hoofdlettergebruik wijzigen">
 <!ENTITY zotero.item.textTransform.titlecase "Alle woorden (Elke Eerste Letter)">
 <!ENTITY zotero.item.textTransform.sentencecase "Eerste woord (van een zin)">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Draai Voor-/Achter- namen om">
 <!ENTITY zotero.item.viewOnline "Bekijk online">
 <!ENTITY zotero.item.copyAsURL "Kopieer als URL">
 <!ENTITY zotero.item.deletePermanently "Permanent verwijderen…">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Wijs een kleur toe...">
 <!ENTITY zotero.tagSelector.renameTag "Label hernoemen…">
 <!ENTITY zotero.tagSelector.deleteTag "Label verwijderen…">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "Kies een labelkleur en plaats voor het label">
 <!ENTITY zotero.tagColorChooser.color "Kleur:">
@@ -181,15 +181,14 @@
 <!ENTITY zotero.import "Importeren">
 <!ENTITY zotero.import.whereToImportFrom "Waaruit wilt u importeren?">
 <!ENTITY zotero.import.source.file "Een bestand (BibTeX, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
-<!ENTITY zotero.import.importing "Importeren…">
+<!ENTITY zotero.import.importing "Importeren...">
 <!ENTITY zotero.import.database "Database">
 <!ENTITY zotero.import.lastModified "Laatst gewijzigd">
 <!ENTITY zotero.import.size "Grootte">
 <!ENTITY zotero.import.createCollection "Geïmporteerde verzamelingen en items in een nieuwe verzameling plaatsen">
-<!ENTITY zotero.import.fileHandling "Bestandsverwerking">
+<!ENTITY zotero.import.fileHandling "Verwerking van bestanden">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Exporteren…">
 <!ENTITY zotero.exportOptions.format.label "Formaat:">
@@ -223,16 +222,16 @@
 
 <!ENTITY zotero.integration.prefs.formatUsing.label "Verwijzingen bewaren als:">
 <!ENTITY zotero.integration.prefs.bookmarks.label "Bladwijzers">
-<!ENTITY zotero.integration.prefs.bookmarks.caption "Bladwijzers worden behouden tussen Microsoft Word en OpenOffice, maar kunnen fouten veroorzaken als deze per ongeluk aangepast worden en kunnen niet toegevoegd worden aan voetnoten.">
+<!ENTITY zotero.integration.prefs.bookmarks.caption "Bladwijzers worden behouden tussen Microsoft Word en OpenOffice, maar kunnen per ongeluk worden gewijzigd. Om uitwisseling tussen beide tekstverwerkers mogelijk te maken is het met bookmarks niet mogelijk verwijzingen op te nemen in voet- of eindnoten als deze optie wordt geselecteerd.">
 
 <!ENTITY zotero.integration.prefs.automaticCitationUpdates.label "Verwijzingen automatisch bijwerken">
-<!ENTITY zotero.integration.prefs.automaticCitationUpdates.tooltip "Verwijzingen die bijgewerkt moeten worden, worden gearceerd in het document">
-<!ENTITY zotero.integration.prefs.automaticCitationUpdates.description "Uitschakelen van updates kan het invoegen van verwijzingen in grote documenten versnellen. Klik op Vernieuwen om verwijzingen handmatig bij te werken.">
+<!ENTITY zotero.integration.prefs.automaticCitationUpdates.tooltip "Verwijzingen die bijgewerkt moeten worden worden gearceerd in het document">
+<!ENTITY zotero.integration.prefs.automaticCitationUpdates.description "Uitschakelen van update kan het invoegen van verwijzingen in grote documenten versnellen. Klik op Vernieuwen om verwijzingen handmatig bij te werken.">
 
 <!ENTITY zotero.integration.prefs.automaticJournalAbbeviations.label "Gebruik MEDLINE tijdschriftafkortingen">
-<!ENTITY zotero.integration.prefs.automaticJournalAbbeviations.caption "Het veld ‘Tijdschrift-afkorting’ wordt genegeerd">
+<!ENTITY zotero.integration.prefs.automaticJournalAbbeviations.caption "Het veld &quot;Tijdschrift-afkorting&quot; wordt genegeerd">
 
-<!ENTITY zotero.integration.prefs.exportDocument "Verander van tekstverwerker…">
+<!ENTITY zotero.integration.prefs.exportDocument "Verander van tekstverwerker...">
 
 <!ENTITY zotero.integration.showEditor.label "Bewerker tonen">
 <!ENTITY zotero.integration.classicView.label "Klassieke weergave">
@@ -313,7 +312,7 @@
 
 <!ENTITY zotero.pdfReader.firstPage "Eerste pagina">
 <!ENTITY zotero.pdfReader.lastPage "Last Page">
-<!ENTITY zotero.pdfReader.back "Terug">
+<!ENTITY zotero.pdfReader.back "Back">
 <!ENTITY zotero.pdfReader.forward "Forward">
 <!ENTITY zotero.pdfReader.handTool "Hand Tool">
 <!ENTITY zotero.pdfReader.verticalScrolling "Vertical Scrolling">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "No Spreads">
 <!ENTITY zotero.pdfReader.oddSpreads "Odd Spreads">
 <!ENTITY zotero.pdfReader.evenSpreads "Even Spreads">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom In">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom Out">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatically Resize">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom to Page Width">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

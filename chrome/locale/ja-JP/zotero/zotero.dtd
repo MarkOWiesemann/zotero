@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "アイテムを削除...">
 <!ENTITY zotero.toolbar.newLibrary.label "新しいライブラリ">
 <!ENTITY zotero.toolbar.newCollection.label "新規コレクション...">
+<!ENTITY zotero.toolbar.markFeedRead.label "フィードを既読にする">
 <!ENTITY zotero.toolbar.newGroup "新規グループ...">
 <!ENTITY zotero.toolbar.newSubcollection.label "新規サブコレクション...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "新規検索条件の保存...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "新しいフィード">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "URLから...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "OPMLから...">
+<!ENTITY zotero.toolbar.feeds.refresh "フィードを更新する">
 <!ENTITY zotero.toolbar.feeds.edit "フィードを編集する...">
 
 <!ENTITY zotero.item.add "追加">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "テキストの大文字・小文字を指定する">
 <!ENTITY zotero.item.textTransform.titlecase "各単語の先頭を大文字に">
 <!ENTITY zotero.item.textTransform.sentencecase "各文の先頭を大文字に">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "姓と名を入れ替える">
 <!ENTITY zotero.item.viewOnline "オンラインで閲覧する">
 <!ENTITY zotero.item.copyAsURL "URLとしてコピーする">
 <!ENTITY zotero.item.deletePermanently "永久に削除する...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "色を指定...">
 <!ENTITY zotero.tagSelector.renameTag "タグ名の変更...">
 <!ENTITY zotero.tagSelector.deleteTag "タグを削除...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "タグの色と位置を選ぶ">
 <!ENTITY zotero.tagColorChooser.color "色:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "インポート">
 <!ENTITY zotero.import.whereToImportFrom "どこからインポートしますか？">
 <!ENTITY zotero.import.source.file "単一ファイル (BibTeX, RIS, Zotero RDF, など.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "オンラインのインポート">
 <!ENTITY zotero.import.importing "インポート中...">
 <!ENTITY zotero.import.database "データベース">
 <!ENTITY zotero.import.lastModified "最後の更新">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "インポートされたコレクションやアイテムを新しいコレクションに格納する">
 <!ENTITY zotero.import.fileHandling "ファイルの取り扱い">
 <!ENTITY zotero.import.online.newItemsOnly "新しいアイテムをダウンロードすることだけです；インポートしたアイテムを更新することをしないでください。">
+<!ENTITY zotero.import.online.relinkOnly "Mendeley Desktopの出典表記をもう一度リンクする">
 
 <!ENTITY zotero.exportOptions.title "エクスポート...">
 <!ENTITY zotero.exportOptions.format.label "フォーマット:">
@@ -281,8 +280,7 @@
 <!ENTITY zotero.rtfScan.citation.label "出典表記">
 <!ENTITY zotero.rtfScan.itemName.label "アイテム名">
 <!ENTITY zotero.rtfScan.unmappedCitations.label "文献不明の出典表記">
-<!ENTITY zotero.rtfScan.ambiguousCitations.label "曖昧な出典表記
-">
+<!ENTITY zotero.rtfScan.ambiguousCitations.label "Ambiguous Citations">
 <!ENTITY zotero.rtfScan.mappedCitations.label "文献同定済みの出典表記">
 <!ENTITY zotero.rtfScan.introPage.label "案内">
 <!ENTITY zotero.rtfScan.introPage.description "Zotero は RTF ファイルから自動的に出典表記を抽出し、出典表記を再整形して、参考文献目録を挿入することができます。この RTF スキャン機能は現在、以下に挙げる形式の出典表記をサポートしています:">
@@ -323,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "スプレッドなし ">
 <!ENTITY zotero.pdfReader.oddSpreads "奇数スプレッド">
 <!ENTITY zotero.pdfReader.evenSpreads "偶数スプレッド">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "拡大表示">
 <!ENTITY zotero.pdfReader.zoomOut "縮小表示">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "自動的にサイズ変更">
 <!ENTITY zotero.pdfReader.zoomPageWidth "ページ幅に合わせる">
 <!ENTITY zotero.pdfReader.zoomPageHeight "ページの高さに合わせる">
@@ -336,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "注釈のインポート…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "ページを左に回転する">
 <!ENTITY zotero.pdfReader.rotatePageRight "ページを右に回転する">
+<!ENTITY zotero.pdfReader.rotatePage180 "ページを180度に回転する">

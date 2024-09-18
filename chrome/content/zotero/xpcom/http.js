@@ -117,7 +117,7 @@ Zotero.HTTP = new function() {
 	 * @param {nsIURI|String} url - URL to request
 	 * @param {Object} [options] Options for HTTP request:
 	 * @param {String} [options.body] - The body of a POST request
-	 * @param {Object | Headers} [options.headers] - HTTP headers to send with the request
+	 * @param {Object} [options.headers] - Object of HTTP headers to send with the request
 	 * @param {Boolean} [options.followRedirects = true] - Object of HTTP headers to send with the
 	 *     request
 	 * @param {Zotero.CookieSandbox} [options.cookieSandbox] - The sandbox from which cookies should
@@ -325,8 +325,8 @@ Zotero.HTTP = new function() {
 			// Don't follow redirects
 			if (options.followRedirects === false) {
 				channel.notificationCallbacks = {
-					QueryInterface: ChromeUtils.generateQI([Ci.nsIInterfaceRequestor, Ci.nsIChannelEventSync]),
-					getInterface: ChromeUtils.generateQI([Ci.nsIChannelEventSink]),
+					QueryInterface: XPCOMUtils.generateQI([Ci.nsIInterfaceRequestor, Ci.nsIChannelEventSync]),
+					getInterface: XPCOMUtils.generateQI([Ci.nsIChannelEventSink]),
 					asyncOnChannelRedirect: function (oldChannel, newChannel, flags, callback) {
 						redirectStatus = (flags & Ci.nsIChannelEventSink.REDIRECT_PERMANENT) ? 301 : 302;
 						redirectLocation = newChannel.URI.spec;
@@ -343,19 +343,22 @@ Zotero.HTTP = new function() {
 		}
 		
 		// Send headers
-		var headers = new Zotero.HTTP.CasePreservingHeaders(options?.headers || {});
+		var headers = {};
+		if (options && options.headers) {
+			Object.assign(headers, options.headers);
+		}
 		var compressedBody = false;
 		if (options.body) {
-			if (!headers.get("Content-Type")) {
-				headers.set("Content-Type", "application/x-www-form-urlencoded");
+			if (!headers["Content-Type"]) {
+				headers["Content-Type"] = "application/x-www-form-urlencoded";
 			}
-			else if (headers.get("Content-Type") == 'multipart/form-data') {
+			else if (headers["Content-Type"] == 'multipart/form-data') {
 				// Allow XHR to set Content-Type with boundary for multipart/form-data
-				headers.delete("Content-Type");
+				delete headers["Content-Type"];
 			}
 			
 			if (options.compressBody && this.isWriteMethod(method)) {
-				headers.set('Content-Encoding', 'gzip');
+				headers['Content-Encoding'] = 'gzip';
 				compressedBody = await Zotero.Utilities.Internal.gzip(options.body);
 				
 				let oldLen = options.body.length;
@@ -365,17 +368,23 @@ Zotero.HTTP = new function() {
 			}
 		}
 		if (options.debug) {
-			if (headers.has("Zotero-API-Key")) {
-				let dispHeaders = new Zotero.HTTP.CasePreservingHeaders(headers);
-				dispHeaders.set("Zotero-API-Key", "[Not shown]");
-				Zotero.debug(Object.fromEntries(dispHeaders.entries()));
+			if (headers["Zotero-API-Key"]) {
+				let dispHeaders = {};
+				Object.assign(dispHeaders, headers);
+				if (dispHeaders["Zotero-API-Key"]) {
+					dispHeaders["Zotero-API-Key"] = "[Not shown]";
+				}
+				Zotero.debug(dispHeaders);
 			}
 			else {
-				Zotero.debug(Object.fromEntries(headers.entries()));
+				Zotero.debug(headers);
 			}
 		}
-		for (var [header, value] of headers) {
+		for (var header in headers) {
 			// Convert numbers to string to make Sinon happy
+			let value = typeof headers[header] == 'number'
+				? headers[header].toString()
+				: headers[header]
 			xmlhttp.setRequestHeader(header, value);
 		}
 
@@ -949,7 +958,8 @@ Zotero.HTTP = new function() {
 	 * to wait for proxy authentication can wait for that promise.
 	 */
 	this.triggerProxyAuth = function () {
-		if (!Zotero.Prefs.get("triggerProxyAuthentication")
+		if (!Zotero.isStandalone
+				|| !Zotero.Prefs.get("triggerProxyAuthentication")
 				|| Zotero.HTTP.browserIsOffline()) {
 			Zotero.proxyAuthComplete = Zotero.Promise.resolve();
 			return false;
@@ -1197,6 +1207,162 @@ Zotero.HTTP = new function() {
 		return results;
 	};
 	
+	
+	/**
+	 * Load one or more documents in a hidden browser
+	 *
+	 * @param {String|String[]} urls URL(s) of documents to load
+	 * @param {Function} processor - Callback to be executed for each document loaded; if function returns
+	 *     a promise, it's waited for before continuing
+	 * @param {Function} onDone - Callback to be executed after all documents have been loaded
+	 * @param {Function} onError - Callback to be executed if an error occurs
+	 * @param {Boolean} dontDelete Don't delete the hidden browser upon completion; calling function
+	 *                             must call deleteHiddenBrowser itself.
+	 * @param {Zotero.CookieSandbox} [cookieSandbox] Cookie sandbox object
+	 * @param {Object} [docShellPrefs] See Zotero.Browser.createHiddenBrowser
+	 * @return {browser} Hidden browser used for loading
+	 */
+	this.loadDocuments = function (urls, processor, onDone, onError, dontDelete, cookieSandbox, docShellPrefs={}) {
+		// (Approximately) how many seconds to wait if the document is left in the loading state and
+		// pageshow is called before we call pageshow with an incomplete document
+		const LOADING_STATE_TIMEOUT = 120;
+		var firedLoadEvent = 0;
+		
+		/**
+		 * Loads the next page
+		 * @inner
+		 */
+		var doLoad = function() {
+			if(currentURL < urls.length) {
+				var url = urls[currentURL],
+					hiddenBrowser = hiddenBrowsers[currentURL];
+				firedLoadEvent = 0;
+				currentURL++;
+				try {
+					Zotero.debug("Zotero.HTTP.loadDocuments: Loading " + url);
+					hiddenBrowser.loadURI(url);
+				} catch(e) {
+					if (onError) {
+						onError(e);
+						return;
+					} else {
+						if(!dontDelete) Zotero.Browser.deleteHiddenBrowser(hiddenBrowsers);
+						throw(e);
+					}
+				}
+			} else {
+				if(!dontDelete) Zotero.Browser.deleteHiddenBrowser(hiddenBrowsers);
+				if (onDone) onDone();
+			}
+		};
+		
+		/**
+		 * Callback to be executed when a page load completes
+		 * @inner
+		 */
+		var onLoad = function(e) {
+			var hiddenBrowser = e.currentTarget,
+				doc = hiddenBrowser.contentDocument;
+			if(hiddenBrowser.zotero_loaded) return;
+			if(!doc) return;
+			var url = doc.documentURI;
+			if(url === "about:blank") return;
+			if(doc.readyState === "loading" && (firedLoadEvent++) < 120) {
+				// Try again in a second
+				Zotero.setTimeout(onLoad.bind(this, {"currentTarget":hiddenBrowser}), 1000);
+				return;
+			}
+			
+			hiddenBrowser.removeEventListener("load", onLoad, true);
+			hiddenBrowser.zotero_loaded = true;
+
+			let channel = hiddenBrowser.docShell.currentDocumentChannel;
+			if (channel && (channel instanceof Components.interfaces.nsIHttpChannel)) {
+				if (channel.responseStatus < 200 || channel.responseStatus >= 400) {
+					let response = `${channel.responseStatus} ${channel.responseStatusText}`;
+					Zotero.debug(`Zotero.HTTP.loadDocuments: ${url} failed with ${response}`, 2);
+					let e = new Zotero.HTTP.UnexpectedStatusException(
+						{
+							status: channel.responseStatus,
+							channel
+						},
+						url,
+						`Invalid response ${response} for ${url}`
+					);
+					if (onError) {
+						onError(e);
+					}
+					else {
+						throw e;
+					}
+					return;
+				}
+			}
+			
+			Zotero.debug("Zotero.HTTP.loadDocuments: " + url + " loaded");
+			
+			var maybePromise;
+			var error;
+			try {
+				maybePromise = processor(doc);
+			}
+			catch (e) {
+				error = e;
+			}
+			
+			// If processor returns a promise, wait for it
+			if (maybePromise && maybePromise.then) {
+				maybePromise.then(() => doLoad())
+				.catch(e => {
+					if (onError) {
+						onError(e);
+					}
+					else {
+						throw e;
+					}
+				});
+				return;
+			}
+			
+			try {
+				if (error) {
+					if (onError) {
+						onError(error);
+					}
+					else {
+						throw error;
+					}
+				}
+			}
+			finally {
+				doLoad();
+			}
+		};
+		
+		if(typeof(urls) == "string") urls = [urls];
+		
+		var hiddenBrowsers = [],
+			currentURL = 0;
+		for(var i=0; i<urls.length; i++) {
+			let hiddenBrowser = Zotero.Browser.createHiddenBrowser();
+			for (let pref in docShellPrefs) {
+				hiddenBrowser.docShell[pref] = docShellPrefs[pref];
+			}
+			if (cookieSandbox) {
+				cookieSandbox.attachToBrowser(hiddenBrowser);
+			}
+			else {
+				new Zotero.CookieSandbox(hiddenBrowser, urls[i], "", "");
+			}
+			hiddenBrowser.addEventListener("load", onLoad, true);
+			hiddenBrowsers[i] = hiddenBrowser;
+		}
+		
+		doLoad();
+		
+		return hiddenBrowsers.length === 1 ? hiddenBrowsers[0] : hiddenBrowsers.slice();
+	}
+	
 	/**
 	 * Handler for XMLHttpRequest state change
 	 *
@@ -1374,9 +1540,9 @@ Zotero.HTTP = new function() {
 	 * @param {HTMLDocument} doc Document returned by 
 	 * @param {nsIURL|String} url
 	 */
-	this.wrapDocument = function(doc, url) {
-		if(typeof url !== "object") {
-			url = Services.io.newURI(url, null, null).QueryInterface(Components.interfaces.nsIURL);
+	 this.wrapDocument = function(doc, url) {
+	 	if(typeof url !== "object") {
+	 		url = Services.io.newURI(url, null, null).QueryInterface(Components.interfaces.nsIURL);
 		}
 		return Zotero.Translate.DOMWrapper.wrap(doc, {
 			"documentURI":url.spec,
@@ -1384,68 +1550,5 @@ Zotero.HTTP = new function() {
 			"location":new Zotero.HTTP.Location(url),
 			"defaultView":new Zotero.HTTP.Window(url)
 		});
-	};
-
-	/**
-	 * Extends Headers to preserve the original capitalization in header names. Header names are still compared
-	 * case-insensitively, but iterating through the keys or entries will return keys with original capitalization.
-	 *
-	 * @example
-	 * let headers = new Headers({ 'Header-Name': 'Header value' });
-	 * Array.from(headers)  // -> [['header-name', 'Header value']]
-	 *
-	 * headers = new Zotero.HTTP.CasePreservingHeaders({ 'Header-Name': 'Header value' });
-	 * Array.from(headers)  // -> [['Header-Name', 'Header value']]
-	 */
-	this.CasePreservingHeaders = class extends Headers {
-		_originalNames = new Map();
-		
-		constructor(init) {
-			super();
-			if (init) {
-				let iter;
-				if (Array.isArray(init) || init instanceof Headers) {
-					iter = init;
-				}
-				else {
-					iter = Object.entries(init);
-				}
-				for (let [name, value] of iter) {
-					this.append(name, value);
-				}
-			}
-		}
-		
-		append(name, value) {
-			super.append(name, value);
-			this._originalNames.set(name.toLowerCase(), name);
-		}
-
-		set(name, value) {
-			super.set(name, value);
-			this._originalNames.set(name.toLowerCase(), name);
-		}
-
-		[Symbol.iterator]() {
-			return this.entries();
-		}
-
-		entries() {
-			return Array.from(super.entries())
-				.map(([name, value]) => [this._originalNames.get(name) || name, value])
-				.values();
-		}
-
-		keys() {
-			return Array.from(super.keys())
-				.map(name => this._originalNames.get(name) || name)
-				.values();
-		}
-
-		forEach(callbackfn, thisArg) {
-			for (let [name, value] of this.entries()) {
-				callbackfn.call(thisArg, value, name, this);
-			}
-		}
-	};
+	 }
 }

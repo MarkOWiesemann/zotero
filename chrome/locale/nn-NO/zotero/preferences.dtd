@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Innstillingar for Zotero">
 
-<!ENTITY zotero.preferences.helpButton.label "Hjelp">
-
 <!ENTITY zotero.preferences.default "Standard:">
 <!ENTITY zotero.preferences.items "items">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Generelt">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "File Handling">
 <!ENTITY zotero.preferences.automaticSnapshots "Ta snapshot automatisk når du genererer element frå nettsider">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Lagra tilknytte PDF-filer og andre filer ved lagring av element">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Automatically retrieve metadata for PDFs">
+<!ENTITY zotero.preferences.autoRenameFiles "Automatically rename attachment files using parent metadata">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Rename linked files">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Open PDFs using">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "System Default">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Fjernar automatisk element i søppelkorga sletta meir enn">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "dagar sidan">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Nullstill filsynkroniseringshistorikken">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Compare all attachment files with the storage service">
 <!ENTITY zotero.preferences.sync.reset "Nullstill">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Reset…">
 
 

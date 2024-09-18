@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Zotero 환경설정">
 
-<!ENTITY zotero.preferences.helpButton.label "도움말">
-
 <!ENTITY zotero.preferences.default "기본값:">
 <!ENTITY zotero.preferences.items "항목">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "일반">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "파일 관리">
 <!ENTITY zotero.preferences.automaticSnapshots "웹 페이지  항목을 생성할 때 자동으로 스냅샷 저장">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "항목 저장시 연관된 PDF 및 다른 파일을 자동으로 첨부">
+<!ENTITY zotero.preferences.autoRecognizeFiles "PDF 파일 메타데이터 자동 검색">
+<!ENTITY zotero.preferences.autoRenameFiles "부모 메타데이터를 이용하여 첨부 파일 이름 자동 변경">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "링크한 파일 이름 바꾸기">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "PDF 파일을 열 앱">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "시스템 기본값">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "휴지통에서 자동 삭제되는 시점 : 휴지통으로 이동 후">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "일 경과">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "파일 동기화 기록 재설정">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "모든 첨부 파일을 저장소 서비스의 파일과 비교합니다">
 <!ENTITY zotero.preferences.sync.reset "재설정">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "재설정...">
 
 

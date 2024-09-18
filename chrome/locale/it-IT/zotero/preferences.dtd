@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Preferenze di Zotero">
 
-<!ENTITY zotero.preferences.helpButton.label "Aiuto">
-
 <!ENTITY zotero.preferences.default "Predefinito:">
 <!ENTITY zotero.preferences.items "elementi">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Generale">
 
-<!ENTITY zotero.preferences.interface "Interfaccia">
 <!ENTITY zotero.preferences.fileHandling "Gestione dei file">
 <!ENTITY zotero.preferences.automaticSnapshots "Salva automaticamente una copia della pagina web (snapshot) quando si crea un elemento da un sito">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Allega automaticamente i file PDF o di altro tipo durante il salvataggio degli elementi">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Recupera automaticamente i metadati dei PDF">
+<!ENTITY zotero.preferences.autoRenameFiles "Rinomina automaticamente i file allegati utilizzando i metadati della citazione genitore">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Rinomina i file collegati">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Apri i PDF utilizzando">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "Impostazioni predefinite di sistema">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Elimina automaticamente gli elementi nel cestino cancellati più di">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "giorni fa">
 
+<!ENTITY zotero.preferences.pdfReader "Lettore PDF">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Mostra schede come">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Autore - Anno - Titolo">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Titolo - Autore - Anno">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Azzera la cronologia di sincronizzazione dei file">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Confronta tutti i file allegati con il servizio di archiviazione">
 <!ENTITY zotero.preferences.sync.reset "Ripristina">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Mostra opzioni di ripristino...">
 <!ENTITY zotero.preferences.sync.reset.button "Ripristina…">
 
 

@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Eliminar elemento...">
 <!ENTITY zotero.toolbar.newLibrary.label "Nueva biblioteca">
 <!ENTITY zotero.toolbar.newCollection.label "Nueva colección...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Marcar canal como leído">
 <!ENTITY zotero.toolbar.newGroup "Nuevo grupo...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Nueva subcolección...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Nueva búsqueda guardada...">
@@ -105,15 +106,15 @@
 <!ENTITY zotero.toolbar.feeds.new "Nuevo canal">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Desde URL...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "Desde OPML...">
+<!ENTITY zotero.toolbar.feeds.refresh "Actualizar canal">
 <!ENTITY zotero.toolbar.feeds.edit "Editar canal...">
 
 <!ENTITY zotero.item.add "Añadir">
 <!ENTITY zotero.item.attachment.file.show "Mostar archivo">
 <!ENTITY zotero.item.textTransform "Transformar texto">
-<!ENTITY zotero.item.textTransform.titlecase "Mayúsculas de título">
-<!ENTITY zotero.item.textTransform.sentencecase "Mayúsculas de oración">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Intercambiar primero/último">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fijar mayúsculas/minúsculas">
+<!ENTITY zotero.item.textTransform.titlecase "Capitalización de título">
+<!ENTITY zotero.item.textTransform.sentencecase "Capitalización de oración">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Intercambiar Nombre/Apellido">
 <!ENTITY zotero.item.viewOnline "Ver en línea">
 <!ENTITY zotero.item.copyAsURL "Copiar como URL">
 <!ENTITY zotero.item.deletePermanently "Eliminar permanentemente...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Asignar color...">
 <!ENTITY zotero.tagSelector.renameTag "Renombrar etiqueta...">
 <!ENTITY zotero.tagSelector.deleteTag "Borrar etiqueta...">
-<!ENTITY zotero.tagSelector.splitTag "Dividir...">
 
 <!ENTITY zotero.tagColorChooser.title "Escoje un color y posición de la etiqueta">
 <!ENTITY zotero.tagColorChooser.color "Color:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Importar">
 <!ENTITY zotero.import.whereToImportFrom "¿Desde dónde quieres importar?">
 <!ENTITY zotero.import.source.file "Un archivo (BibTex, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "Una carpeta de PDF u otros archivos">
-<!ENTITY zotero.import.onlineImport "Importación en línea">
 <!ENTITY zotero.import.importing "Importando...">
 <!ENTITY zotero.import.database "Base de datos">
 <!ENTITY zotero.import.lastModified "Última modificación">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Coloca colecciones y elementos importados en una nueva colección">
 <!ENTITY zotero.import.fileHandling "Manejo de archivos">
 <!ENTITY zotero.import.online.newItemsOnly "Descargar solo los elementos nuevos; no actualizar los elementos previamente importados">
+<!ENTITY zotero.import.online.relinkOnly "Volver a vincular las citas de Mendeley Desktop">
 
 <!ENTITY zotero.exportOptions.title "Exportar...">
 <!ENTITY zotero.exportOptions.format.label "Formato:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "Vista de libro">
 <!ENTITY zotero.pdfReader.oddSpreads "Vista de libro impar">
 <!ENTITY zotero.pdfReader.evenSpreads "Vista de libro par">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Ampliar zum">
 <!ENTITY zotero.pdfReader.zoomOut "Reducir zum">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Redimensionar automáticamente">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zum a ancho de página">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Ampliar a alto de página">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Importar anotaciones...">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Girar la página a la izquierda">
 <!ENTITY zotero.pdfReader.rotatePageRight "Girar la página a la derecha">
+<!ENTITY zotero.pdfReader.rotatePage180 "Girar la página  180°">

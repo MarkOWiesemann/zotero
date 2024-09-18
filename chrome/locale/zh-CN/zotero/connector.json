@@ -45,7 +45,7 @@
     "message": "保存此条目时出错。$1 可能限制您单次保存条目的数量。更多信息参阅 $2。"
   },
   "progressWindow_error_troubleshootingTranslatorIssues": {
-    "message": "转换器故障排除"
+    "message": "翻译器故障排除"
   },
   "progressWindow_error_siteAccessLimits": {
     "message": "网站访问限制"

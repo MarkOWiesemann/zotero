@@ -3,7 +3,7 @@
 <!ENTITY zotero.general.optional "(Valgfri)">
 <!ENTITY zotero.general.note "Notat:">
 <!ENTITY zotero.general.selectAll "Velg alle">
-<!ENTITY zotero.general.deselectAll "Opphev valg av alle">
+<!ENTITY zotero.general.deselectAll "Fjern markeringen">
 <!ENTITY zotero.general.edit "Rediger">
 <!ENTITY zotero.general.delete "Slett">
 <!ENTITY zotero.general.moveToTrash "Flytt til søppelkorg">
@@ -30,7 +30,7 @@
 <!ENTITY zotero.errorReport.submitted "Feilrapporten er levert.">
 <!ENTITY zotero.errorReport.reportID "Rapport-ID:">
 <!ENTITY zotero.errorReport.postToForums "Legg igjen en melding i Zotero-forumene (forums.zotero.org) med denne rapport-IDen, en beskrivelse av problemet og nødvendige steg for å reprodusere problemet.">
-<!ENTITY zotero.errorReport.notReviewed "Feilrapporter blir ikke kommentert, dersom problemet ikke henvises til i forumene.">
+<!ENTITY zotero.errorReport.notReviewed "Feilrapporter blir vanligvis ikke kommentert, dersom problemet ikke tas opp i forumene.">
 
 <!ENTITY zotero.upgrade.title "Zotero oppgraderingsveiviser">
 <!ENTITY zotero.upgrade.newVersionInstalled "Du ha installert en ny versjon av Zotero.">
@@ -84,11 +84,12 @@
 <!ENTITY zotero.toolbar.removeItem.label "Fjern element...">
 <!ENTITY zotero.toolbar.newLibrary.label "Nytt bibliotek">
 <!ENTITY zotero.toolbar.newCollection.label "Ny samling...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Merk nyhetsstrøm som lest">
 <!ENTITY zotero.toolbar.newGroup "Ny gruppe...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Ny under-samling...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Nytt lagret søk...">
 <!ENTITY zotero.toolbar.emptyTrash.label "Tøm søppelkorg">
-<!ENTITY zotero.toolbar.tagSelector.label "Vis/skjul emneordvelger">
+<!ENTITY zotero.toolbar.tagSelector.label "Vis/skjul emneordsamling">
 <!ENTITY zotero.toolbar.actions.label "Handlinger">
 <!ENTITY zotero.toolbar.import.label "Importer...">
 <!ENTITY zotero.toolbar.importFromClipboard "Importer fra utklippstavle">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Ny nyhetsstrøm">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Fra URL…">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "Fra OPML…">
+<!ENTITY zotero.toolbar.feeds.refresh "Oppdater nyhetsstrøm">
 <!ENTITY zotero.toolbar.feeds.edit "Rediger nyhetsstrøm…">
 
 <!ENTITY zotero.item.add "Legg til">
@@ -113,7 +115,6 @@
 <!ENTITY zotero.item.textTransform.titlecase "Tittel-format">
 <!ENTITY zotero.item.textTransform.sentencecase "Kun første ord med stor bokstav">
 <!ENTITY zotero.item.creatorTransform.nameSwap "Bytt fornavn/etternavn">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fiks til stor forbokstav">
 <!ENTITY zotero.item.viewOnline "Vis på nett">
 <!ENTITY zotero.item.copyAsURL "Kopier som URL">
 <!ENTITY zotero.item.deletePermanently "Slett permanent…">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Tildel farge…">
 <!ENTITY zotero.tagSelector.renameTag "Gi emneord nytt navn...">
 <!ENTITY zotero.tagSelector.deleteTag "Slett emneord...">
-<!ENTITY zotero.tagSelector.splitTag "Del opp…">
 
 <!ENTITY zotero.tagColorChooser.title "Velg farge og posisjon for emneord">
 <!ENTITY zotero.tagColorChooser.color "Farge:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Importer">
 <!ENTITY zotero.import.whereToImportFrom "Hvor ønsker du å importere fra?">
 <!ENTITY zotero.import.source.file "En fil (BibTeX, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "En mappe med PDF-filer eller andre filer">
-<!ENTITY zotero.import.onlineImport "import via nettet">
 <!ENTITY zotero.import.importing "Importerer…">
 <!ENTITY zotero.import.database "Database">
 <!ENTITY zotero.import.lastModified "Sist endret">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Legg importerte samlinger og elementer i en ny samling">
 <!ENTITY zotero.import.fileHandling "Filbehandling">
 <!ENTITY zotero.import.online.newItemsOnly "Last kun ned nye elementer, ikke oppdater allerede importerte elementer">
+<!ENTITY zotero.import.online.relinkOnly "Koble sammen Mendeley Desktop henvisninger">
 
 <!ENTITY zotero.exportOptions.title "Eksporter...">
 <!ENTITY zotero.exportOptions.format.label "Format:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "Ingen tosidig visning">
 <!ENTITY zotero.pdfReader.oddSpreads "Oddetallssider mot hverandre">
 <!ENTITY zotero.pdfReader.evenSpreads "Partallssider mot hverandre">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom inn">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom ut">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Endre størrelse automatisk">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom til sidebredde">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom til sidehøyde">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Importer merknader…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Roter siden til venstre">
 <!ENTITY zotero.pdfReader.rotatePageRight "Roter siden til høyre">
+<!ENTITY zotero.pdfReader.rotatePage180 "Roter siden 180°">

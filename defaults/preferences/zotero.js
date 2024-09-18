@@ -4,6 +4,7 @@
 // http://www.zotero.org/documentation/hidden_prefs
 
 pref("extensions.zotero.firstRun2", true);
+pref("extensions.zotero@chnm.gmu.edu.description", "chrome://zotero/locale/zotero.properties");
 
 pref("extensions.zotero.saveRelativeAttachmentPath", false);
 pref("extensions.zotero.baseAttachmentPath", "");
@@ -35,8 +36,8 @@ pref("extensions.zotero.recursiveCollections", false);
 pref("extensions.zotero.autoRecognizeFiles", true);
 pref("extensions.zotero.autoRenameFiles", true);
 pref("extensions.zotero.autoRenameFiles.linked", false);
-pref("extensions.zotero.autoRenameFiles.fileTypes", "application/pdf,application/epub+zip");
-pref("extensions.zotero.attachmentRenameTemplate", "{{ firstCreator suffix=\" - \" }}{{ year suffix=\" - \" }}{{ title truncate=\"100\" }}");
+pref("extensions.zotero.autoRenameFiles.fileTypes", "application/pdf");
+pref("extensions.zotero.attachmentRenameFormatString", "{%c - }{%y - }{%t{50}}");
 pref("extensions.zotero.capitalizeTitles", false);
 pref("extensions.zotero.launchNonNativeFiles", false);
 pref("extensions.zotero.sortNotesChronologically", false);
@@ -100,7 +101,7 @@ pref("extensions.zotero.fulltext.pdfMaxPages", 100);
 pref("extensions.zotero.search.useLeftBound", true);
 
 // Notes
-pref("extensions.zotero.note.fontFamily", "-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"Helvetica Neue\", Helvetica, Arial, sans-serif");
+pref("extensions.zotero.note.fontFamily", "Lucida Grande, Tahoma, Verdana, Helvetica, sans-serif");
 pref("extensions.zotero.note.fontSize", "14");
 pref("extensions.zotero.note.css", "");
 pref("extensions.zotero.note.smartQuotes", true);
@@ -120,6 +121,7 @@ pref("extensions.zotero.export.displayCharsetOption", true);
 pref("extensions.zotero.export.citePaperJournalArticleURL", false);
 pref("extensions.zotero.cite.automaticJournalAbbreviations", true);
 pref("extensions.zotero.cite.useCiteprocRs", false);
+pref("extensions.zotero.import.charset", "auto");
 pref("extensions.zotero.import.createNewCollection.fromFileOpenHandler", true);
 pref("extensions.zotero.rtfScan.lastInputFile", "");
 pref("extensions.zotero.rtfScan.lastOutputFile", "");
@@ -138,7 +140,7 @@ pref("extensions.zotero.integration.upgradeTemplateDelayedOn", 0);
 pref("extensions.zotero.integration.dontPromptMendeleyImport", false);
 
 // Connector settings
-pref("extensions.zotero.httpServer.enabled", true);
+pref("extensions.zotero.httpServer.enabled", false);	// TODO enabled for testing only
 pref("extensions.zotero.httpServer.port", 23119);	// ascii "ZO"
 
 // Zeroconf
@@ -185,10 +187,8 @@ pref("extensions.zotero.purge.tags", false);
 // Zotero pane persistent data
 pref("extensions.zotero.pane.persist", "");
 
+// Custom file handlers
 pref("extensions.zotero.fileHandler.pdf", "");
-pref("extensions.zotero.fileHandler.epub", "");
-pref("extensions.zotero.fileHandler.snapshot", "");
-pref("extensions.zotero.openReaderInNewWindow", false);
 
 // File/URL opening executable if launch() fails
 pref("extensions.zotero.fallbackLauncher.unix", "/usr/bin/xdg-open");
@@ -214,6 +214,3 @@ pref("extensions.zotero.scaffold.eslint.enabled", true);
 
 // Tabs
 pref("extensions.zotero.tabs.title.reader", "titleCreatorYear");
-
-// Reader
-pref("extensions.zotero.reader.ebookFontFamily", "Georgia, serif");

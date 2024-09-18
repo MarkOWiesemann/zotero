@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Elementua kendu...">
 <!ENTITY zotero.toolbar.newLibrary.label "Liburutegi berria...">
 <!ENTITY zotero.toolbar.newCollection.label "Bilduma berria...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Jarioa irakurritzat eman">
 <!ENTITY zotero.toolbar.newGroup "Talde berria...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Azpi-bilduma berria...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Gordetako bilaketa berria...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Jario berria">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "URL batetik...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "OPML bitartez...">
+<!ENTITY zotero.toolbar.feeds.refresh "Freskatu jarioa">
 <!ENTITY zotero.toolbar.feeds.edit "Editatu jarioa...">
 
 <!ENTITY zotero.item.add "Gehitu">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "Testua bihurtu">
 <!ENTITY zotero.item.textTransform.titlecase "Hitz Bakoitza Letra Larriz">
 <!ENTITY zotero.item.textTransform.sentencecase "Lehen letra letra larriz">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Trukatu lehena/azkena">
-<!ENTITY zotero.item.creatorTransform.fixCase "Konpondu letra-kaxa">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Izen-abizenak trukatu">
 <!ENTITY zotero.item.viewOnline "Linean ikusi">
 <!ENTITY zotero.item.copyAsURL "Kopiatu URL gisa">
 <!ENTITY zotero.item.deletePermanently "Betirako ezabatu...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Kolorea esleitu...">
 <!ENTITY zotero.tagSelector.renameTag "Etiketaren izena aldatu...">
 <!ENTITY zotero.tagSelector.deleteTag "Etiketa ezabatu...">
-<!ENTITY zotero.tagSelector.splitTag "Banatu...">
 
 <!ENTITY zotero.tagColorChooser.title "Etiketaren kolorea eta posizioa aukeratu">
 <!ENTITY zotero.tagColorChooser.color "Kolorea:">
@@ -181,15 +181,14 @@
 <!ENTITY zotero.import "Inportatu">
 <!ENTITY zotero.import.whereToImportFrom "Nondik inportatu nahi duzu?">
 <!ENTITY zotero.import.source.file "Fitxategi bat (BibTex, RIS, Zotero RDF etab.)">
-<!ENTITY zotero.import.source.folder "PDF edo bestelako fitxategidun karpeta">
-<!ENTITY zotero.import.onlineImport "lineako inportazioa">
 <!ENTITY zotero.import.importing "Inportatzen...">
 <!ENTITY zotero.import.database "Datubasea">
 <!ENTITY zotero.import.lastModified "Azkenekoz aldatua">
 <!ENTITY zotero.import.size "Tamaina">
 <!ENTITY zotero.import.createCollection "Inportatutako bilduma eta elementuak bilduma berri batean kokatu">
 <!ENTITY zotero.import.fileHandling "Fitxategien erabilera">
-<!ENTITY zotero.import.online.newItemsOnly "Deskargatu elementu berriak bakarrik; ez eguneratu lehenago inportatutako elementurik">
+<!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Esportatu...">
 <!ENTITY zotero.exportOptions.format.label "Formatua:">
@@ -322,16 +321,14 @@
 <!ENTITY zotero.pdfReader.noSpreads "Xaflarik ez">
 <!ENTITY zotero.pdfReader.oddSpreads "Xafla bakoitiak">
 <!ENTITY zotero.pdfReader.evenSpreads "Xafla bikoitiak">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Gerturatu">
 <!ENTITY zotero.pdfReader.zoomOut "Urrundu">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Tamaina automatikoki egokitu">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Orrialdearen zabalerara zoom egin">
-<!ENTITY zotero.pdfReader.zoomPageHeight "Orrialdearen altuerara zoom egin">
-<!ENTITY zotero.pdfReader.splitVertically "Zatitu bertikalean">
-<!ENTITY zotero.pdfReader.splitHorizontally "Zatitu horizontalean">
+<!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
+<!ENTITY zotero.pdfReader.splitVertically "Split Vertically">
+<!ENTITY zotero.pdfReader.splitHorizontally "Split Horizontally">
 <!ENTITY zotero.pdfReader.transferFromPDF "Oharpenak inportatu">
-<!ENTITY zotero.pdfReader.rotatePageLeft "Biratu orrialdea ezkerretara">
-<!ENTITY zotero.pdfReader.rotatePageRight "Biratu orrialdea eskubitara">
+<!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
+<!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

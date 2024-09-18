@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "ตั้งค่าพึงใจสำหรับ Zotero">
 
-<!ENTITY zotero.preferences.helpButton.label "วิธีใช้">
-
 <!ENTITY zotero.preferences.default "ค่าโดยปริยาย:">
 <!ENTITY zotero.preferences.items "รายการ">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "ทั่วไป">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "File Handling">
 <!ENTITY zotero.preferences.automaticSnapshots "เก็บภาพหน้าจอโดยอัตโนมัติเมื่อสร้างรายการจากหน้าเว็บ">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "แนบแฟ้ม PDF และแฟ้มอื่นโดยอัตโนมัติเมื่อบันทึกรายการ">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Automatically retrieve metadata for PDFs">
+<!ENTITY zotero.preferences.autoRenameFiles "Automatically rename attachment files using parent metadata">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Rename linked files">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Open PDFs using">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "System Default">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "ล้างรายการในถังขยะที่เคยลบนานกว่า ">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "วันที่แล้ว">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "ตั้งค่าประวัติการประสานข้อมูลแฟ้มใหม่">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "Compare all attachment files with the storage service">
 <!ENTITY zotero.preferences.sync.reset "ตั้งค่าใหม่">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Reset…">
 
 

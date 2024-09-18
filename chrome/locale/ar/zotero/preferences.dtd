@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "تفضيلات زوتيرو">
 
-<!ENTITY zotero.preferences.helpButton.label "مساعدة">
-
 <!ENTITY zotero.preferences.default "الإفتراضي:">
 <!ENTITY zotero.preferences.items "عناصر">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "عام">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "معاملة الملف">
 <!ENTITY zotero.preferences.automaticSnapshots "أخذ لقطات تلقائية عند إنشاء العناصر من صفحات الويب">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "الارفاق التلقائي لملفات PDF والملفات الاخرى عند اضافة عنصر جديد من صفحة ويب">
+<!ENTITY zotero.preferences.autoRecognizeFiles "استرداد البيانات الوصفية تلقائياً لملفات بي دي إف">
+<!ENTITY zotero.preferences.autoRenameFiles "إعادة تسمية الملفات المرفقة تلقائيًا مستخدماً بيانات الأصل الوصفية">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "إعادة تسمية الملفات المرتبطة">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "افتح ملفات بي دي إف مستخدماً">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "افتراضي النظام">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "الافراغ التلقائي لسلة المحذوفات. ازالة اللملفات المحذوفة منذ">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "يوم">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "إعادة تعيين ملف سجل المزامنة">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "مقارنة جميع الملفات المرفقة مع خدمة التخزين">
 <!ENTITY zotero.preferences.sync.reset "اعادة ضبط">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "إعادة التعيين...">
 
 

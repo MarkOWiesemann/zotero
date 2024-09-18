@@ -62,7 +62,6 @@ const xpcomFilesAll = [
 	'translate/src/tlds',
 	'translation/translate_firefox',
 	'isbn',
-	'preferencePanes',
 ];
 
 /** XPCOM files to be loaded only for local translation and DB access **/
@@ -112,12 +111,11 @@ const xpcomFilesLocal = [
 	'mime',
 	'notifier',
 	'openPDF',
-	'plugins',
 	'reader',
 	'progressQueue',
 	'progressQueueDialog',
 	'quickCopy',
-	'recognizeDocument',
+	'recognizePDF',
 	'report',
 	'retractions',
 	'router',
@@ -154,11 +152,10 @@ const xpcomFilesLocal = [
 	'connector/httpIntegrationClient',
 	'connector/server_connector',
 	'connector/server_connectorIntegration',
-	'itemTreeManager',
 ];
 
-Components.utils.import("resource://gre/modules/ComponentUtils.jsm");
-const { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+Components.utils.import("resource://gre/modules/XPCOMUtils.jsm");
+Components.utils.import("resource://gre/modules/Services.jsm");
 
 var instanceID = (new Date()).getTime();
 var isFirstLoadThisSession = true;
@@ -203,6 +200,17 @@ ZoteroContext.prototype = {
 	"Ci":Ci,
 	
 	/**
+	 * Convenience method to replicate window.setTimeout()
+	 **/
+	"setTimeout":function setTimeout(func, ms){
+		return this.Zotero.setTimeout(func, ms);
+	},
+	
+	"clearTimeout":function setTimeout(id) {
+		this.Zotero.clearTimeout(id);
+	},
+	
+	/**
 	 * Switches in or out of connector mode
 	 */
 	"switchConnectorMode":function(isConnector) {
@@ -232,22 +240,10 @@ ZoteroContext.prototype = {
 			var o = {};
 			Object.assign(o, zInitOptions);
 			Object.assign(o, options);
-			return zContext.Zotero.init(o);
+			zContext.Zotero.init(o);
 		});
 	}
 };
-
-const { XPCOMUtils } = ChromeUtils.import(
-	"resource://gre/modules/XPCOMUtils.jsm"
-);
-XPCOMUtils.defineLazyModuleGetters(ZoteroContext.prototype, {
-	setTimeout: "resource://gre/modules/Timer.jsm",
-	clearTimeout: "resource://gre/modules/Timer.jsm",
-	setInterval: "resource://gre/modules/Timer.jsm",
-	clearInterval: "resource://gre/modules/Timer.jsm",
-	requestIdleCallback: "resource://gre/modules/Timer.jsm",
-	cancelIdleCallback: "resource://gre/modules/Timer.jsm",
-});
 
 /**
  * The class from which the Zotero global XPCOM context is constructed
@@ -309,7 +305,7 @@ function makeZoteroContext(isConnector) {
 		catch (e) {
 			dump("Error loading " + xpcomFile + ".js\n\n");
 			dump(e + "\n\n");
-			Components.utils.reportError("Error loading " + xpcomFile + ".js");
+			Components.utils.reportError("Error loading " + xpcomFile + ".js", zContext);
 			throw (e);
 		}
 	}
@@ -329,7 +325,10 @@ function makeZoteroContext(isConnector) {
 		subscriptLoader.loadSubScript("chrome://zotero/content/xpcom/translate/src/" + rdfXpcomFiles[i] + ".js", zContext.Zotero.RDF, 'utf-8');
 	}
 	
-	subscriptLoader.loadSubScript("chrome://zotero/content/xpcom/standalone.js", zContext);
+	if(isStandalone()) {
+		// If isStandalone, load standalone.js
+		subscriptLoader.loadSubScript("chrome://zotero/content/xpcom/standalone.js", zContext, 'utf-8');
+	}
 	
 	// add connector-related properties
 	zContext.Zotero.isConnector = isConnector;
@@ -353,66 +352,74 @@ function ZoteroService() {
 				if (!zContext.Zotero.startupError) {
 					zContext.Zotero.startupError = e.stack || e;
 				}
+				if (!isStandalone()) {
+					throw e;
+				}
 			})
 			.then(function () {
-				if (zContext.Zotero.startupErrorHandler || zContext.Zotero.startupError) {
-					if (zContext.Zotero.startupErrorHandler) {
-						zContext.Zotero.startupErrorHandler();
+				if (isStandalone()) {
+					if (zContext.Zotero.startupErrorHandler || zContext.Zotero.startupError) {
+						if (zContext.Zotero.startupErrorHandler) {
+							zContext.Zotero.startupErrorHandler();
+						}
+						else if (zContext.Zotero.startupError) {
+							// Try to repair the DB on the next startup, in case it helps resolve
+							// the error
+							try {
+								zContext.Zotero.Schema.setIntegrityCheckRequired(true);
+							}
+							catch (e) {}
+							
+							try {
+								zContext.Zotero.startupError =
+									zContext.Zotero.Utilities.Internal.filterStack(
+										zContext.Zotero.startupError
+									);
+							}
+							catch (e) {}
+							
+							let ps = Cc["@mozilla.org/embedcomp/prompt-service;1"]
+								.getService(Ci.nsIPromptService);
+							let buttonFlags = (ps.BUTTON_POS_0) * (ps.BUTTON_TITLE_IS_STRING)
+								+ (ps.BUTTON_POS_1) * (ps.BUTTON_TITLE_IS_STRING);
+							// Get the stringbundle manually
+							let errorStr = "Error";
+							let quitStr = "Quit";
+							let checkForUpdateStr = "Check for Update";
+							try {
+								let src = 'chrome://zotero/locale/zotero.properties';
+								let stringBundleService = Components.classes["@mozilla.org/intl/stringbundle;1"]
+									.getService(Components.interfaces.nsIStringBundleService);
+								let stringBundle = stringBundleService.createBundle(src);
+								errorStr = stringBundle.GetStringFromName('general.error');
+								checkForUpdateStr = stringBundle.GetStringFromName('general.checkForUpdate');
+								quitStr = stringBundle.GetStringFromName('general.quit');
+							}
+							catch (e) {}
+							let index = ps.confirmEx(
+								null,
+								errorStr,
+								zContext.Zotero.startupError,
+								buttonFlags,
+								checkForUpdateStr,
+								quitStr,
+								null,
+								null,
+								{}
+							);
+							if (index == 0) {
+								Components.classes["@mozilla.org/embedcomp/window-watcher;1"]
+									.getService(Components.interfaces.nsIWindowWatcher)
+									.openWindow(null, 'chrome://mozapps/content/update/updates.xul',
+										'updateChecker', 'chrome,centerscreen,modal', null);
+							}
+						}
+						zContext.Zotero.Utilities.Internal.quitZotero();
 					}
-					else if (zContext.Zotero.startupError) {
-						// Try to repair the DB on the next startup, in case it helps resolve
-						// the error
-						try {
-							zContext.Zotero.Schema.setIntegrityCheckRequired(true);
-						}
-						catch (e) {}
-						
-						try {
-							zContext.Zotero.startupError =
-								zContext.Zotero.Utilities.Internal.filterStack(
-									zContext.Zotero.startupError
-								);
-						}
-						catch (e) {}
-						
-						let ps = Cc["@mozilla.org/embedcomp/prompt-service;1"]
-							.getService(Ci.nsIPromptService);
-						let buttonFlags = (ps.BUTTON_POS_0) * (ps.BUTTON_TITLE_IS_STRING)
-							+ (ps.BUTTON_POS_1) * (ps.BUTTON_TITLE_IS_STRING);
-						// Get the stringbundle manually
-						let errorStr = "Error";
-						let quitStr = "Quit";
-						let checkForUpdateStr = "Check for Update";
-						try {
-							let src = 'chrome://zotero/locale/zotero.properties';
-							let stringBundleService = Components.classes["@mozilla.org/intl/stringbundle;1"]
-								.getService(Components.interfaces.nsIStringBundleService);
-							let stringBundle = stringBundleService.createBundle(src);
-							errorStr = stringBundle.GetStringFromName('general.error');
-							checkForUpdateStr = stringBundle.GetStringFromName('general.checkForUpdate');
-							quitStr = stringBundle.GetStringFromName('general.quit');
-						}
-						catch (e) {}
-						let index = ps.confirmEx(
-							null,
-							errorStr,
-							zContext.Zotero.startupError,
-							buttonFlags,
-							checkForUpdateStr,
-							quitStr,
-							null,
-							null,
-							{}
-						);
-						if (index == 0) {
-							Components.classes["@mozilla.org/embedcomp/window-watcher;1"]
-								.getService(Components.interfaces.nsIWindowWatcher)
-								.openWindow(null, 'chrome://zotero/content/update/updates.xhtml',
-									'updateChecker', 'chrome,centerscreen,modal', null);
-						}
-					}
-					zContext.Zotero.Utilities.Internal.quitZotero();
+					return;
 				}
+				zContext.Zotero.debug("Initialized in "+(Date.now() - start)+" ms");
+				isFirstLoadThisSession = false;
 			});
 			
 			let cb;
@@ -433,9 +440,13 @@ function ZoteroService() {
 		throw e;
 	}
 }
+
 ZoteroService.prototype = {
+	contractID: '@zotero.org/Zotero;1',
+	classDescription: 'Zotero',
 	classID: Components.ID('{e4c61080-ec2d-11da-8ad9-0800200c9a66}'),
-	QueryInterface: ChromeUtils.generateQI([])
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsISupports,
+			Components.interfaces.nsIProtocolHandler])
 }
 
 function addInitCallback(callback) {
@@ -447,11 +458,15 @@ function addInitCallback(callback) {
 	}
 }
 
+var _isStandalone = null;
 /**
  * Determine whether Zotero Standalone is running
  */
 function isStandalone() {
-	return true;
+	if(_isStandalone === null) {
+		_isStandalone = Services.appinfo.ID === 'zotero@chnm.gmu.edu';
+	}
+	return _isStandalone;
 }
 
 function getOS() {
@@ -476,7 +491,7 @@ function isLinux() {
 function ZoteroCommandLineHandler() {}
 ZoteroCommandLineHandler.prototype = {
 	/* nsICommandLineHandler */
-	handle: async function (cmdLine) {
+	handle : function(cmdLine) {
 		// Force debug output to window
 		if (cmdLine.handleFlag("ZoteroDebug", false)) {
 			zInitOptions.forceDebugLog = 2;
@@ -485,14 +500,13 @@ ZoteroCommandLineHandler.prototype = {
 		else if (cmdLine.handleFlag("ZoteroDebugText", false)) {
 			zInitOptions.forceDebugLog = 1;
 		}
-		// Pressing Ctrl-C via the terminal is interpreted as a crash, and after three crashes
-		// Firefox starts up in automatic safe mode. To avoid this, we clear the crash counter when
-		// using one of the debug-logging flags, which generally imply terminal usage.
-		if (zInitOptions.forceDebugLog) {
-			Services.prefs.getBranch("toolkit.startup.").clearUserPref('recent_crashes');
-		}
 		
 		zInitOptions.forceDataDir = cmdLine.handleFlagWithParam("datadir", false);
+		
+		// handler to open Zotero pane at startup in Zotero for Firefox
+		if (!isStandalone() && cmdLine.handleFlag("ZoteroPaneOpen", false)) {
+			zInitOptions.openPane = true;
+		}
 		
 		if (cmdLine.handleFlag("ZoteroTest", false)) {
 			zInitOptions.test = true;
@@ -519,131 +533,124 @@ ZoteroCommandLineHandler.prototype = {
 			zContext.Zotero.Integration.execCommand(agent, command, docId, templateVersion);
 		}
 	
-		var fileToOpen;
-		// Handle zotero:// and file URIs and prevent them from opening a new window
-		var param = cmdLine.handleFlagWithParam("url", false);
-		if (param) {
-			cmdLine.preventDefault = true;
+		if(isStandalone()) {
+			var fileToOpen;
+			// Special handler for "zotero" URIs at the command line to prevent them from opening a new window
+			var param = cmdLine.handleFlagWithParam("url", false);
+			if (param) {
+				var uri = cmdLine.resolveURI(param);
+				if(uri.schemeIs("zotero")) {
+					addInitCallback(function (Zotero) {
+						Zotero.uiReadyPromise
+						.then(function () {
+							// Check for existing window and focus it
+							var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+								.getService(Components.interfaces.nsIWindowMediator);
+							var win = wm.getMostRecentWindow("navigator:browser");
+							if (win) {
+								win.focus();
+								win.ZoteroPane.loadURI(uri.spec)
+							}
+						});
+					});
+				}
+				// See below
+				else if (uri.schemeIs("file")) {
+					Components.utils.import("resource://gre/modules/osfile.jsm")
+					fileToOpen = OS.Path.fromFileURI(uri.spec)
+				}
+				else {
+					dump(`Not handling URL: ${uri.spec}\n\n`);
+				}
+			}
 			
-			var uri = cmdLine.resolveURI(param);
-			if (uri.schemeIs("zotero")) {
+			param = cmdLine.handleFlag("debugger", false);
+			if (param) {
+				try {
+					let portOrPath = Services.prefs.getBranch('').getIntPref('devtools.debugger.remote-port');
+					
+					const { devtools } = Components.utils.import("resource://devtools/shared/Loader.jsm", {});
+					const { DebuggerServer } = devtools.require("devtools/server/main");
+					
+					if (!DebuggerServer.initialized) {
+						dump("Initializing devtools server\n");
+						DebuggerServer.init();
+						DebuggerServer.registerAllActors();
+						DebuggerServer.allowChromeProcess = true;
+					}
+					
+					let listener = DebuggerServer.createListener();
+					listener.portOrPath = portOrPath;
+					listener.open();
+					
+					dump("Debugger server started on " + portOrPath + "\n\n");
+				}
+				catch (e) {
+					dump(e + "\n\n");
+					Components.utils.reportError(e);
+				}
+			}
+			
+			// In Fx49-based Mac Standalone, if Zotero is closed, an associated file is launched, and
+			// Zotero hasn't been opened before, a -file parameter is passed and two main windows open.
+			// Subsequent file openings when closed result in -url with file:// URLs (converted above)
+			// and don't result in two windows. Here we prevent the double window.
+			param = fileToOpen;
+			if (!param) {
+				param = cmdLine.handleFlagWithParam("file", false);
+				if (param && isMac()) {
+					cmdLine.preventDefault = true;
+				}
+			}
+			if (param) {
 				addInitCallback(function (Zotero) {
+					// Wait to handle things that require the UI until after it's loaded
 					Zotero.uiReadyPromise
 					.then(function () {
-						// Check for existing window and focus it
-						var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-							.getService(Components.interfaces.nsIWindowMediator);
-						var win = wm.getMostRecentWindow("navigator:browser");
-						if (win) {
-							win.focus();
-							win.ZoteroPane.loadURI(uri.spec)
+						var file = Zotero.File.pathToFile(param);
+						
+						if(file.leafName.substr(-4).toLowerCase() === ".csl"
+								|| file.leafName.substr(-8).toLowerCase() === ".csl.txt") {
+							// Install CSL file
+							Zotero.Styles.install({ file: file.path }, file.path);
+						} else {
+							// Ask before importing
+							var checkState = {
+								value: Zotero.Prefs.get('import.createNewCollection.fromFileOpenHandler')
+							};
+							if (Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
+									.getService(Components.interfaces.nsIPromptService)
+									.confirmCheck(null, Zotero.getString('ingester.importFile.title'),
+									Zotero.getString('ingester.importFile.text', [file.leafName]),
+									Zotero.getString('ingester.importFile.intoNewCollection'),
+									checkState)) {
+								Zotero.Prefs.set(
+									'import.createNewCollection.fromFileOpenHandler', checkState.value
+								);
+								
+								// Perform file import in front window
+								var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
+								   .getService(Components.interfaces.nsIWindowMediator);
+								var browserWindow = wm.getMostRecentWindow("navigator:browser");
+								browserWindow.Zotero_File_Interface.importFile({
+									file,
+									createNewCollection: checkState.value
+								});
+							}
 						}
 					});
 				});
 			}
-			// See below
-			else if (uri.schemeIs("file")) {
-				Components.utils.import("resource://gre/modules/osfile.jsm")
-				fileToOpen = OS.Path.fromFileURI(uri.spec)
-			}
-			else {
-				dump(`Not handling URL: ${uri.spec}\n\n`);
-			}
-		}
-		
-		param = cmdLine.handleFlag("debugger", false);
-		if (param) {
-			try {
-				let portOrPath = Services.prefs.getBranch('').getIntPref('devtools.debugger.remote-port');
-				
-				const { DevToolsLoader } = ChromeUtils.import(
-					"resource://devtools/shared/loader/Loader.jsm"
-				);
-				const loader = new DevToolsLoader({
-					freshCompartment: true,
-				});
-				const { DevToolsServer } = loader.require("devtools/server/devtools-server");
-				const { SocketListener } = loader.require("devtools/shared/security/socket");
-				
-				if (DevToolsServer.initialized) {
-					dump("Debugger server already initialized\n\n");
-					return;
-				}
-				
-				DevToolsServer.init();
-				DevToolsServer.registerAllActors();
-				DevToolsServer.allowChromeProcess = true;
-				const socketOptions = { portOrPath };
-				const listener = new SocketListener(DevToolsServer, socketOptions);
-				await listener.open();
-				if (!DevToolsServer.listeningSockets) {
-					throw new Error("No listening sockets");
-				}
-				
-				dump(`Debugger server started on ${portOrPath}\n\n`);
-			}
-			catch (e) {
-				dump(e + "\n\n");
-				Components.utils.reportError(e);
-			}
-		}
-		
-		// In Fx49-based Mac Standalone, if Zotero is closed, an associated file is launched, and
-		// Zotero hasn't been opened before, a -file parameter is passed and two main windows open.
-		// Subsequent file openings when closed result in -url with file:// URLs (converted above)
-		// and don't result in two windows. Here we prevent the double window.
-		param = fileToOpen;
-		if (!param) {
-			param = cmdLine.handleFlagWithParam("file", false);
-			if (param && isMac()) {
-				cmdLine.preventDefault = true;
-			}
-		}
-		if (param) {
-			addInitCallback(function (Zotero) {
-				// Wait to handle things that require the UI until after it's loaded
-				Zotero.uiReadyPromise
-				.then(function () {
-					var file = Zotero.File.pathToFile(param);
-					
-					if(file.leafName.substr(-4).toLowerCase() === ".csl"
-							|| file.leafName.substr(-8).toLowerCase() === ".csl.txt") {
-						// Install CSL file
-						Zotero.Styles.install({ file: file.path }, file.path);
-					} else {
-						// Ask before importing
-						var checkState = {
-							value: Zotero.Prefs.get('import.createNewCollection.fromFileOpenHandler')
-						};
-						if (Components.classes["@mozilla.org/embedcomp/prompt-service;1"]
-								.getService(Components.interfaces.nsIPromptService)
-								.confirmCheck(null, Zotero.getString('ingester.importFile.title'),
-								Zotero.getString('ingester.importFile.text', [file.leafName]),
-								Zotero.getString('ingester.importFile.intoNewCollection'),
-								checkState)) {
-							Zotero.Prefs.set(
-								'import.createNewCollection.fromFileOpenHandler', checkState.value
-							);
-							
-							// Perform file import in front window
-							var wm = Components.classes["@mozilla.org/appshell/window-mediator;1"]
-							   .getService(Components.interfaces.nsIWindowMediator);
-							var browserWindow = wm.getMostRecentWindow("navigator:browser");
-							browserWindow.Zotero_File_Interface.importFile({
-								file,
-								createNewCollection: checkState.value
-							});
-						}
-					}
-				});
-			});
 		}
 	},
 	
+	contractID: "@mozilla.org/commandlinehandler/general-startup;1?type=zotero",
+	classDescription: "Zotero Command Line Handler",
 	classID: Components.ID("{531828f8-a16c-46be-b9aa-14845c3b010f}"),
 	service: true,
 	_xpcom_categories: [{category:"command-line-handler", entry:"m-zotero"}],
-	QueryInterface: ChromeUtils.generateQI([Components.interfaces.nsICommandLineHandler])
+	QueryInterface: XPCOMUtils.generateQI([Components.interfaces.nsICommandLineHandler,
+	                                       Components.interfaces.nsISupports])
 };
 
-var NSGetFactory = ComponentUtils.generateNSGetFactory([ZoteroService, ZoteroCommandLineHandler]);
+var NSGetFactory = XPCOMUtils.generateNSGetFactory([ZoteroService, ZoteroCommandLineHandler]);

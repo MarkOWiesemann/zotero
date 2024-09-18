@@ -27,9 +27,12 @@
 //  related with `require` not reusing the context
 var React = require('react');
 var ReactDOM = require('react-dom');
+var TagsBoxContainer = require('containers/tagsBoxContainer').default;
 var NotesList = require('components/itemPane/notesList').default;
 
 var ZoteroContextPane = new function () {
+	const HTML_NS = 'http://www.w3.org/1999/xhtml';
+	
 	var _tabCover;
 	var _contextPane;
 	var _contextPaneInner;
@@ -86,26 +89,26 @@ var ZoteroContextPane = new function () {
 		}
 		
 		// vbox
-		var vbox = document.createXULElement('vbox');
+		var vbox = document.createElement('vbox');
 		vbox.setAttribute('flex', '1');
 
 		_contextPaneInner.append(vbox);
 
 		// Toolbar extension
-		var toolbarExtension = document.createXULElement('box');
+		var toolbarExtension = document.createElement('box');
 		toolbarExtension.style.height = '32px';
 		toolbarExtension.id = 'zotero-context-toolbar-extension';
 		
-		_panesDeck = document.createXULElement('deck');
+		_panesDeck = document.createElement('deck');
 		_panesDeck.setAttribute('flex', 1);
 		_panesDeck.setAttribute('selectedIndex', 0);
 
 		vbox.append(toolbarExtension, _panesDeck);
 
 		// Item pane deck
-		_itemPaneDeck = document.createXULElement('deck');
+		_itemPaneDeck = document.createElement('deck');
 		// Notes pane deck
-		_notesPaneDeck = document.createXULElement('deck');
+		_notesPaneDeck = document.createElement('deck');
 		_notesPaneDeck.style.backgroundColor = 'white';
 		_notesPaneDeck.setAttribute('flex', 1);
 		_notesPaneDeck.className = 'notes-pane-deck';
@@ -117,7 +120,7 @@ var ZoteroContextPane = new function () {
 		_itemToggle.addEventListener('click', _toggleItemButton);
 		_notesToggle.addEventListener('click', _toggleNotesButton);
 		Zotero.Reader.onChangeSidebarWidth = _updatePaneWidth;
-		Zotero.Reader.onToggleSidebar = _updatePaneWidth;
+		Zotero.Reader.onChangeSidebarOpen = _updatePaneWidth;
 	};
 
 	this.destroy = function () {
@@ -126,7 +129,7 @@ var ZoteroContextPane = new function () {
 		window.removeEventListener('resize', _update);
 		Zotero.Notifier.unregisterObserver(this._notifierID);
 		Zotero.Reader.onChangeSidebarWidth = () => {};
-		Zotero.Reader.onToggleSidebar = () => {};
+		Zotero.Reader.onChangeSidebarOpen = () => {};
 		_contextPaneInner.innerHTML = '';
 		_itemContexts = [];
 		_notesContexts = [];
@@ -189,8 +192,6 @@ var ZoteroContextPane = new function () {
 							}
 						}
 					}
-					// For unknown reason fx102, unlike 60, sometimes doesn't automatically update selected index
-					_selectItemContext(Zotero_Tabs.selectedID);
 				});
 			}
 			else if (action == 'select') {
@@ -201,7 +202,7 @@ var ZoteroContextPane = new function () {
 					_contextPaneSplitter.setAttribute('hidden', true);
 					_contextPane.setAttribute('collapsed', true);
 					_tabToolbar.hidden = true;
-					_tabCover.classList.add('hidden');
+					_tabCover.hidden = true;
 				}
 				else if (Zotero_Tabs.selectedType == 'reader') {
 					if (_panesDeck.selectedIndex == 1
@@ -214,14 +215,14 @@ var ZoteroContextPane = new function () {
 
 					var reader = Zotero.Reader.getByTabID(Zotero_Tabs.selectedID);
 					if (reader) {
-						_tabCover.classList.remove('hidden');
+						_tabCover.hidden = false;
 						(async () => {
 							await reader._initPromise;
-							_tabCover.classList.add('hidden');
+							_tabCover.hidden = true;
 							// Focus reader pages view if context pane note editor is not selected
 							if (Zotero_Tabs.selectedID == reader.tabID
 								&& (!document.activeElement
-									|| !document.activeElement.closest('.context-node iframe[id="editor-view"]'))) {
+									|| !document.activeElement.closest('.context-node iframe[anonid="editor-view"]'))) {
 								reader.focus();
 							}
 							
@@ -284,11 +285,11 @@ var ZoteroContextPane = new function () {
 				var libraryContext = _notesPaneDeck.selectedPanel;
 				// Global note
 				if (libraryContext.selectedIndex == 1) {
-					return libraryContext.querySelector('note-editor');
+					return libraryContext.querySelector('zoteronoteeditor');
 				}
 				// Tab specific child note
 				else if (libraryContext.selectedIndex == 2) {
-					return libraryContext.querySelector('.zotero-context-pane-tab-notes-deck').selectedPanel.querySelector('note-editor');
+					return libraryContext.querySelector('.zotero-context-pane-tab-notes-deck').selectedPanel.querySelector('zoteronoteeditor');
 				}
 			}
 		}
@@ -312,11 +313,11 @@ var ZoteroContextPane = new function () {
 			else {
 				var node = _notesPaneDeck.selectedPanel;
 				if (node.selectedIndex == 0) {
-					node.querySelector('search-textbox').focus();
+					node.querySelector('textbox').focus();
 					return true;
 				}
 				else {
-					node.querySelector('note-editor').focusFirst();
+					node.querySelector('zoteronoteeditor').focusFirst();
 					return true;
 				}
 			}
@@ -356,7 +357,7 @@ var ZoteroContextPane = new function () {
 		var reader = Zotero.Reader.getByTabID(Zotero_Tabs.selectedID);
 		if (reader) {
 			if ((stacked || _contextPaneSplitter.getAttribute('state') == 'collapsed')) {
-				reader.setToolbarPlaceholderWidth(_tabToolbar.offsetWidth);
+				reader.setToolbarPlaceholderWidth(_tabToolbar.boxObject.width);
 			}
 			else {
 				reader.setToolbarPlaceholderWidth(0);
@@ -409,7 +410,7 @@ var ZoteroContextPane = new function () {
 			var height = 0;
 			if (Zotero.Prefs.get('layout') == 'stacked'
 				&& _contextPane.getAttribute('collapsed') != 'true') {
-				height = _contextPaneInner.getBoundingClientRect().height;
+				height = _contextPaneInner.boxObject.height;
 			}
 			Zotero.Reader.setBottomPlaceholderHeight(height);
 		}
@@ -451,27 +452,27 @@ var ZoteroContextPane = new function () {
 	function _addNotesContext(libraryID) {
 		let readOnly = _isLibraryReadOnly(libraryID);
 		
-		var list = document.createXULElement('vbox');
+		var list = document.createElement('vbox');
 		list.setAttribute('flex', 1);
 		list.className = 'zotero-context-notes-list';
 
-		var noteContainer = document.createXULElement('vbox');
-		var title = document.createXULElement('vbox');
+		var noteContainer = document.createElement('vbox');
+		var title = document.createElement('vbox');
 		title.className = 'zotero-context-pane-editor-parent-line';
-		var editor = new (customElements.get('note-editor'));
+		var editor = document.createElement('zoteronoteeditor');
 		editor.className = 'zotero-context-pane-pinned-note';
 		editor.setAttribute('flex', 1);
 		noteContainer.append(title, editor);
 
-		var tabNotesContainer = document.createXULElement('vbox');
-		var title = document.createXULElement('vbox');
+		var tabNotesContainer = document.createElement('vbox');
+		var title = document.createElement('vbox');
 		title.className = 'zotero-context-pane-editor-parent-line';
-		let tabNotesDeck = document.createXULElement('deck');
+		let tabNotesDeck = document.createElement('deck');
 		tabNotesDeck.className = 'zotero-context-pane-tab-notes-deck';
 		tabNotesDeck.setAttribute('flex', 1);
 		tabNotesContainer.append(title, tabNotesDeck);
 		
-		let contextNode = document.createXULElement('deck');
+		let contextNode = document.createElement('deck');
 		contextNode.append(list, noteContainer, tabNotesContainer);
 		_notesPaneDeck.append(contextNode);
 		
@@ -484,7 +485,7 @@ var ZoteroContextPane = new function () {
 			_updateAddToNote();
 		};
 		
-		var head = document.createXULElement('hbox');
+		var head = document.createElement('hbox');
 		head.style.display = 'flex';
 		
 		async function _createNoteFromAnnotations(child) {
@@ -529,10 +530,11 @@ var ZoteroContextPane = new function () {
 			_updateNotesList();
 		}
 
-		var vbox = document.createXULElement('vbox');
+		var vbox = document.createElement('vbox');
 		vbox.style.flex = '1';
-		var input = document.createXULElement('search-textbox');
-		input.style.margin = '4px 7px';
+		var input = document.createElement('textbox');
+		input.style.width = 'calc(100% - 42px)';
+		input.style.marginLeft = '12px';
 		input.setAttribute('type', 'search');
 		input.setAttribute('timeout', '250');
 		input.addEventListener('command', () => {
@@ -543,10 +545,10 @@ var ZoteroContextPane = new function () {
 		
 		head.append(vbox);
 
-		var listBox = document.createXULElement('vbox');
+		var listBox = document.createElement('vbox');
 		listBox.style.display = 'flex';
 		listBox.setAttribute('flex', '1');
-		var listInner = document.createElement('div');
+		var listInner = document.createElementNS(HTML_NS, 'div');
 		listInner.className = 'notes-list-container';
 		// Otherwise it can be focused with tab
 		listInner.tabIndex = -1;
@@ -803,11 +805,11 @@ var ZoteroContextPane = new function () {
 			var tabNotesDeck = _notesPaneDeck.selectedPanel.querySelector('.zotero-context-pane-tab-notes-deck');
 			var parentTitleContainer;
 			if (isChild) {
-				var vbox = document.createXULElement('vbox');
+				var vbox = document.createElement('vbox');
 				vbox.setAttribute('data-tab-id', Zotero_Tabs.selectedID);
 				vbox.style.display = 'flex';
 
-				editor = new (customElements.get('note-editor'));
+				editor = document.createElement('zoteronoteeditor');
 				editor.style.display = 'flex';
 				editor.style.width = '100%';
 				vbox.append(editor);
@@ -818,8 +820,6 @@ var ZoteroContextPane = new function () {
 				editor.item = item;
 				editor.parentItem = null;
 				editor.returnHandler = () => {
-					// Immediately save note content before vbox with note-editor iframe is destroyed below
-					editor.saveSync();
 					_panesDeck.setAttribute('selectedIndex', 1);
 					_notesPaneDeck.selectedPanel.setAttribute('selectedIndex', 0);
 					vbox.remove();
@@ -846,11 +846,11 @@ var ZoteroContextPane = new function () {
 			parentTitleContainer.innerHTML = '';
 			var parentItem = item.parentItem;
 			if (parentItem) {
-				var container = document.createElement('div');
-				var img = document.createElement('img');
+				var container = document.createElementNS(HTML_NS, 'div');
+				var img = document.createElementNS(HTML_NS, 'img');
 				img.src = Zotero.ItemTypes.getImageSrc(parentItem.itemType);
 				img.className = 'parent-item-type';
-				var title = document.createElement('div');
+				var title = document.createElementNS(HTML_NS, 'div');
 				title.append(parentItem.getDisplayTitle());
 				title.className = 'parent-title';
 				container.append(img, title);
@@ -873,7 +873,7 @@ var ZoteroContextPane = new function () {
 	}
 
 	async function _addItemContext(tabID, itemID) {
-		var container = document.createXULElement('vbox');
+		var container = document.createElement('vbox');
 		container.id = tabID + '-context';
 		container.className = 'zotero-item-pane-content';
 		_itemPaneDeck.appendChild(container);
@@ -900,11 +900,11 @@ var ZoteroContextPane = new function () {
 		_itemContexts.push(context);
 		
 		if (!parentID) {
-			var vbox = document.createXULElement('vbox');
+			var vbox = document.createElement('vbox');
 			vbox.setAttribute('flex', '1');
 			vbox.setAttribute('align', 'center');
 			vbox.setAttribute('pack', 'center');
-			var description = document.createXULElement('description');
+			var description = document.createElement('description');
 			vbox.append(description);
 			description.append(Zotero.getString('pane.context.noParent'));
 			container.append(vbox);
@@ -916,53 +916,68 @@ var ZoteroContextPane = new function () {
 		// Keep the code below in sync with itemPane.xul
 
 		// tabbox
-		var tabbox = document.createXULElement('tabbox');
+		var tabbox = document.createElement('tabbox');
 		tabbox.setAttribute('flex', '1');
 		tabbox.className = 'zotero-view-tabbox';
 
 		container.append(tabbox);
 
 		// tabs
-		var tabs = document.createXULElement('tabs');
+		var tabs = document.createElement('tabs');
 		tabs.className = 'zotero-editpane-tabs';
 		// tabpanels
-		var tabpanels = document.createXULElement('tabpanels');
+		var tabpanels = document.createElement('tabpanels');
 		tabpanels.setAttribute('flex', '1');
 		tabpanels.className = 'zotero-view-item';
 		tabpanels.addEventListener('select', () => {
 			_updateAddToNote();
 		});
 
+		tabbox.append(tabs, tabpanels);
+
 		// Info tab
-		var tabInfo = document.createXULElement('tab');
+		var tabInfo = document.createElement('tab');
 		tabInfo.setAttribute('label', Zotero.getString('zotero.tabs.info.label'));
 		// Tags tab
-		var tabTags = document.createXULElement('tab');
+		var tabTags = document.createElement('tab');
 		tabTags.setAttribute('label', Zotero.getString('zotero.tabs.tags.label'));
 		// Related tab
-		var tabRelated = document.createXULElement('tab');
+		var tabRelated = document.createElement('tab');
 		tabRelated.setAttribute('label', Zotero.getString('zotero.tabs.related.label'));
 
 		tabs.append(tabInfo, tabTags, tabRelated);
-		tabbox.append(tabs, tabpanels);
 
 		// Info panel
-		var panelInfo = document.createXULElement('tabpanel');
+		var panelInfo = document.createElement('tabpanel');
 		panelInfo.setAttribute('flex', '1');
 		panelInfo.className = 'zotero-editpane-item-box';
-		var itemBox = new (customElements.get('item-box'));
+		var itemBox = document.createElement('zoteroitembox');
 		itemBox.setAttribute('flex', '1');
 		panelInfo.append(itemBox);
 		// Tags panel
-		var panelTags = document.createXULElement('tabpanel');
-		var tagsBox = new (customElements.get('tags-box'));
-		tagsBox.setAttribute('flex', '1');
-		tagsBox.className = 'zotero-editpane-tags';
-		panelTags.append(tagsBox);
-
+		var panelTags = document.createElement('tabpanel');
+		panelTags.setAttribute('orient', 'vertical');
+		panelTags.setAttribute('context', 'tags-context-menu');
+		panelTags.className = 'tags-pane';
+		panelTags.style.display = 'flex';
+		var div = document.createElementNS(HTML_NS, 'div');
+		div.className = 'tags-box-container';
+		div.style.display = 'flex';
+		div.style.flexGrow = '1';
+		panelTags.append(div);
+		var tagsBoxRef = React.createRef();
+		ReactDOM.render(
+			<TagsBoxContainer
+				key={'tagsBox-' + parentItem.id}
+				item={parentItem}
+				editable={!readOnly}
+				ref={tagsBoxRef}
+			/>,
+			div
+		);
 		// Related panel
-		var panelRelated = document.createXULElement('tabpanel');
-		var relatedBox = new (customElements.get('related-box'));
+		var panelRelated = document.createElement('tabpanel');
+		var relatedBox = document.createElement('relatedbox');
 		relatedBox.setAttribute('flex', '1');
 		relatedBox.className = 'zotero-editpane-related';
 		panelRelated.addEventListener('click', (event) => {
@@ -978,9 +993,6 @@ var ZoteroContextPane = new function () {
 
 		itemBox.mode = readOnly ? 'view' : 'edit';
 		itemBox.item = parentItem;
-
-		tagsBox.mode = readOnly ? 'view' : 'edit';
-		tagsBox.item = parentItem;
 
 		relatedBox.mode = readOnly ? 'view' : 'edit';
 		relatedBox.item = parentItem;

@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "ازالة العنصر...">
 <!ENTITY zotero.toolbar.newLibrary.label "مكتبة جديدة">
 <!ENTITY zotero.toolbar.newCollection.label "مجموعة عناصر جديدة...">
+<!ENTITY zotero.toolbar.markFeedRead.label "علم الخلاصة كمقروءة">
 <!ENTITY zotero.toolbar.newGroup "مجموعة مشاركة جديدة...">
 <!ENTITY zotero.toolbar.newSubcollection.label "مجموعة عناصر فرعية جديدة...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "بحث محفوظ جديد...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "خلاصة جديدة">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "من رابط...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "من OPML...">
+<!ENTITY zotero.toolbar.feeds.refresh "تحديث الخلاصة">
 <!ENTITY zotero.toolbar.feeds.edit "تحرير الخلاصة...">
 
 <!ENTITY zotero.item.add "اضافة">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "تغيير حالة النص">
 <!ENTITY zotero.item.textTransform.titlecase "حرف كبير في بداية كل كلمة">
 <!ENTITY zotero.item.textTransform.sentencecase "حالة الجملة">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "تبديل الاسم الاول/اللقب">
 <!ENTITY zotero.item.viewOnline "العرض على الانترنت">
 <!ENTITY zotero.item.copyAsURL "نسخ كمسار انترنت">
 <!ENTITY zotero.item.deletePermanently "حذف نهائي...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "تخصيص اللون...">
 <!ENTITY zotero.tagSelector.renameTag "تغيير اسم الوسم...">
 <!ENTITY zotero.tagSelector.deleteTag "حذف الوسم...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "اختار لون وموقع الوسم">
 <!ENTITY zotero.tagColorChooser.color "لون:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "استيراد">
 <!ENTITY zotero.import.whereToImportFrom "من أين تريد الاستيراد؟">
 <!ENTITY zotero.import.source.file " ملف (BibTeX, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "استيراد...">
 <!ENTITY zotero.import.database "قاعدة البيانات">
 <!ENTITY zotero.import.lastModified "آخر تعديل">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "ضع المجموعات المستوردة والمواد في مجموعة جديدة">
 <!ENTITY zotero.import.fileHandling "معاملة الملف">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "تصدير...">
 <!ENTITY zotero.exportOptions.format.label "الصياغة:">
@@ -221,11 +220,9 @@
 <!ENTITY zotero.integration.prefs.footnotes.label "حواشي سفلية">
 <!ENTITY zotero.integration.prefs.endnotes.label "تعليقات ختامية">
 
-<!ENTITY zotero.integration.prefs.formatUsing.label "تخزين الاستشهادات ك:
-">
+<!ENTITY zotero.integration.prefs.formatUsing.label "Store Citations as:">
 <!ENTITY zotero.integration.prefs.bookmarks.label "الاشارات المرجعية">
-<!ENTITY zotero.integration.prefs.bookmarks.caption "يمكن مشاركة الإشارات المرجعية بين ورد و ليبرأوفيس، ولكن قد تسبب أخطاء إذا تم تعديلها بالخطأ ولا يمكن إدراجها في الحواشي السفلية.
-">
+<!ENTITY zotero.integration.prefs.bookmarks.caption "Bookmarks can be shared between Word and LibreOffice, but may cause errors if accidentally modified and cannot be inserted into footnotes.">
 
 <!ENTITY zotero.integration.prefs.automaticCitationUpdates.label "حدث الاستشهادات آلياً">
 <!ENTITY zotero.integration.prefs.automaticCitationUpdates.tooltip "سيتم تمييز الاستشهادات ذات التحديثات المعلقة في المستند">
@@ -324,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "No Spreads">
 <!ENTITY zotero.pdfReader.oddSpreads "Odd Spreads">
 <!ENTITY zotero.pdfReader.evenSpreads "Even Spreads">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom In">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom Out">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatically Resize">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom to Page Width">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -337,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">

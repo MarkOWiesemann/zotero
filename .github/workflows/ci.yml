@@ -28,7 +28,6 @@ jobs:
       - name: Install packages for act
         if: env.ACT == 'true'
         run: apt update && apt install -y zstd xvfb dbus-x11 libgtk-3-0 libx11-xcb1 libdbus-glib-1-2 libxt6
-      
       - name: Cache xulrunner
         id: xulrunner-cache
         uses: actions/cache@v3

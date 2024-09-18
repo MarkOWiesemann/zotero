@@ -1,7 +1,5 @@
 <!ENTITY zotero.preferences.title "Các tùy chọn của Zotero">
 
-<!ENTITY zotero.preferences.helpButton.label "Giúp đỡ">
-
 <!ENTITY zotero.preferences.default "Mặc định:">
 <!ENTITY zotero.preferences.items "các mục tài liệu">
 <!ENTITY zotero.preferences.period ".">
@@ -10,10 +8,11 @@
 
 <!ENTITY zotero.preferences.prefpane.general "Các tùy chọn chung">
 
-<!ENTITY zotero.preferences.interface "Interface">
 <!ENTITY zotero.preferences.fileHandling "Xử lý tập tin">
 <!ENTITY zotero.preferences.automaticSnapshots "Tự động tạo ảnh chụp khi lưu tài liệu từ web">
 <!ENTITY zotero.preferences.downloadAssociatedFiles "Tự động đính kèm các tập tin PDF và các tập tin liên quan khác khi lưu tài liệu mới">
+<!ENTITY zotero.preferences.autoRecognizeFiles "Tự lấy metadata cho các tập tin PDF">
+<!ENTITY zotero.preferences.autoRenameFiles "Tự động đổi tên các tập tin đính kèm dùng thông tin meta từ mục cha">
 <!ENTITY zotero.preferences.autoRenameFiles.renameLinked "Đổi tên tập tin liên kết">
 <!ENTITY zotero.preferences.fileHandler.openPDFsUsing "Mở các tập tin PDF bằng">
 <!ENTITY zotero.preferences.fileHandler.systemDefault "Thiết lập mặc định">
@@ -27,6 +26,7 @@
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPre "Tự động loại bỏ các tài liệu trong Thùng rác đã xóa hơn">
 <!ENTITY zotero.preferences.trashAutoEmptyDaysPost "ngày trước đây">
 
+<!ENTITY zotero.preferences.pdfReader "PDF Reader">
 <!ENTITY zotero.preferences.reader.tabsTitle.label "Show tabs as">
 <!ENTITY zotero.preferences.reader.tabsTitle.creatorYearTitle "Creator - Year - Title">
 <!ENTITY zotero.preferences.reader.tabsTitle.titleCreatorYear "Title - Creator - Year">
@@ -89,7 +89,6 @@
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory "Thiết lập lại lịch sử đồng bộ tập tin">
 <!ENTITY zotero.preferences.sync.reset.resetFileSyncHistory.desc "So sánh tất cả các tập tin đính kèm bằng dịch vụ lưu trữ">
 <!ENTITY zotero.preferences.sync.reset "Thiết lập lại">
-<!ENTITY zotero.preferences.sync.reset.showResetOptions "Show Reset Options…">
 <!ENTITY zotero.preferences.sync.reset.button "Đang thiết lập lại...">
 
 

@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Elem törlése...">
 <!ENTITY zotero.toolbar.newLibrary.label "Könyvtár létrehozása">
 <!ENTITY zotero.toolbar.newCollection.label "Új gyűjtemény...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Mark Feed as Read">
 <!ENTITY zotero.toolbar.newGroup "Új csoport...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Új algyűjtemény...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Új mentett keresés...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "New Feed">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "URL-ből…">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "OPML-ből…">
+<!ENTITY zotero.toolbar.feeds.refresh "Refresh Feed">
 <!ENTITY zotero.toolbar.feeds.edit "Edit Feed…">
 
 <!ENTITY zotero.item.add "Hozzáadás">
@@ -113,7 +115,6 @@
 <!ENTITY zotero.item.textTransform.titlecase "Szókezdő">
 <!ENTITY zotero.item.textTransform.sentencecase "Mondatkezdő">
 <!ENTITY zotero.item.creatorTransform.nameSwap "Keresztnév/Vezetéknév felcserélése">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
 <!ENTITY zotero.item.viewOnline "Online megtekintés">
 <!ENTITY zotero.item.copyAsURL "Másolás URL-ként">
 <!ENTITY zotero.item.deletePermanently "Végleges törlés…">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Szín kiválasztása…">
 <!ENTITY zotero.tagSelector.renameTag "Címke átnevezése...">
 <!ENTITY zotero.tagSelector.deleteTag "Címke törlése...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "Válassza ki a címke színét és a pozíciót.">
 <!ENTITY zotero.tagColorChooser.color "Szín:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Importálás">
 <!ENTITY zotero.import.whereToImportFrom "Honnét szeretné importálni?">
 <!ENTITY zotero.import.source.file "Egy fájl (BibTeX, RIS, Zotero RDF, stb.)">
-<!ENTITY zotero.import.source.folder "PDF-ek vagy más fájlok mappája">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "Importálás…">
 <!ENTITY zotero.import.database "Adatbázis">
 <!ENTITY zotero.import.lastModified "Utolsó módosítás">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Importált elemek és gyűjtemények áthelyezése új gyűjteménybe">
 <!ENTITY zotero.import.fileHandling "Fájlkezelés">
 <!ENTITY zotero.import.online.newItemsOnly "Csak új elemek letöltése; nem frissíti a korábban importált elemeket.">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Exportálás...">
 <!ENTITY zotero.exportOptions.format.label "Formátum:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "Nincs oldaltapasztás">
 <!ENTITY zotero.pdfReader.oddSpreads "Oldalak összetapasztása: páratlan">
 <!ENTITY zotero.pdfReader.evenSpreads "Oldalak összetapasztása: páros">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Nagyítás">
 <!ENTITY zotero.pdfReader.zoomOut "Kicsinyítés">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatikus átméretezés">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Nagyítás oldalszélességre">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Teljes oldal">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Jegyzetek importálása…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Oldal elforgatása balra">
 <!ENTITY zotero.pdfReader.rotatePageRight "Oldal elforgatása jobbra">
+<!ENTITY zotero.pdfReader.rotatePage180 "Oldal elforgatása 180°-kal">

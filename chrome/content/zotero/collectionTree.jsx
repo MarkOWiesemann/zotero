@@ -86,9 +86,6 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		this._editingInput = null;
 		this._dropRow = null;
 		this._typingTimeout = null;
-
-		this._customRowHeights = [];
-		this._separatorHeight = 8;
 		
 		this.onLoad = this.createEventBinding('load', true, true);
 	}
@@ -176,7 +173,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 	handleActivate = (event, indices) => {
 		let index = indices[0];
 		let treeRow = this.getRow(index);
-		if (treeRow.isCollection() && this.editable && this.selection.focused == index) {
+		if (treeRow.isCollection() && this.editable) {
 			this._editing = treeRow;
 			treeRow.editingName = treeRow.ref.name;
 			this.tree.invalidateRow(index);
@@ -223,7 +220,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		const treeRow = this.getRow(index);
 		
 		// Div creation and content
-		let div = oldDiv || document.createElement('div');
+		let div = oldDiv || document.createElementNS("http://www.w3.org/1999/xhtml", 'div');
 		div.innerHTML = "";
 		
 		// Classes
@@ -236,22 +233,22 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		// Depth indent
 		let depth = treeRow.level;
 		// The arrow on macOS is a full icon's width.
-		// For non-userLibrary/feed items that are drawn under headers
+		// For non-userLibrary items that are drawn under headers
 		// we do not draw the arrow and need to move all items 1 level up
-		if (Zotero.isMac && !treeRow.isHeader() && !treeRow.isFeed()
-				&& treeRow.ref && treeRow.ref.libraryID != Zotero.Libraries.userLibraryID) {
+		if (Zotero.isMac && !treeRow.isHeader() && treeRow.ref
+			&& treeRow.ref.libraryID != Zotero.Libraries.userLibraryID) {
 			depth--;
 		}
 		div.style.paddingInlineStart = (CHILD_INDENT * depth) + 'px';
 		
 		// Create a single-cell for the row (for the single-column layout)
-		let cell = document.createElement('span');
+		let cell = document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
 		cell.className = "cell label primary";
 		
 		// Twisty/spacer
 		let twisty;
 		if (this.isContainerEmpty(index)) {
-			twisty = document.createElement('span');
+			twisty = document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
 			if (Zotero.isMac && treeRow.isHeader()) {
 				twisty.classList.add("spacer-header");
 			}
@@ -275,15 +272,14 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		icon.classList.add('cell-icon');
 		
 		// Label
-		let label = document.createElement('span');
+		let label = document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
 		label.innerText = treeRow.getName();
 		label.className = 'cell-text';
-		label.dir = 'auto';
 
 		// Editing input
 		div.classList.toggle('editing', treeRow == this._editing);
 		if (treeRow == this._editing) {
-			label = document.createElement('input');
+			label = document.createElementNS("http://www.w3.org/1999/xhtml", 'input');
 			label.className = 'cell-text';
 			label.setAttribute("size", 5);
 			label.value = treeRow.editingName;
@@ -426,24 +422,31 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 			}
 			
 			// Add feeds
-			if (this.hideSources.indexOf('feeds') == -1 && Zotero.Feeds.haveFeeds()) {
-				newRows.splice(added++, 0,
-					new Zotero.CollectionTreeRow(this, 'separator', false),
-				);
-				newRows.splice(added++, 0,
-					new Zotero.CollectionTreeRow(this, 'feeds', {
-						get unreadCount() {
-							return Zotero.Feeds.totalUnreadCount();
-						},
-						
-						async updateFeed() {
-							for (let feed of Zotero.Feeds.getAll()) {
-								await feed.updateFeed();
-							}
-						}
-					})
-				);
-				added += await this._expandRow(newRows, added - 1);
+			if (this.hideSources.indexOf('feeds') == -1) {
+				var feeds = Zotero.Feeds.getAll();
+				
+				// Alphabetize
+				var collation = Zotero.getLocaleCollation();
+				feeds.sort(function (a, b) {
+					return collation.compareString(1, a.name, b.name);
+				});
+				
+				if (feeds.length) {
+					newRows.splice(added++, 0,
+						new Zotero.CollectionTreeRow(this, 'separator', false),
+					);
+					let feedHeader = new Zotero.CollectionTreeRow(this, 'header', {
+						id: "feed-libraries-header",
+						label: Zotero.getString('pane.collections.feedLibraries'),
+						libraryID: -1
+					});
+					newRows.splice(added++, 0, feedHeader);
+					for (let feed of feeds) {
+						newRows.splice(added++, 0,
+							new Zotero.CollectionTreeRow(this, 'feed', feed, 1)
+						);
+					}
+				}
 			}
 			
 			this.selection.selectEventsSuppressed = true;
@@ -526,7 +529,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 	
 	async selectLibrary(libraryID = 1) {
 		var row = this.getRowIndexByID('L' + libraryID);
-		if (row === false) {
+		if (row === undefined) {
 			Zotero.debug(`CollectionTree.selectLibrary(): library with ID ${libraryID} not found in collection tree`);
 			return false;
 		}
@@ -545,10 +548,6 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 
 	selectSearch(id) {
 		return this.selectByID('S' + id);
-	}
-	
-	async selectFeeds() {
-		return this.selectByID('F1');
 	}
 
 	async selectItem(itemID, inLibraryRoot) {
@@ -643,15 +642,9 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 			return;
 		}
 		if (type == 'feed' && (action == 'unreadCountUpdated' || action == 'statusChanged')) {
-			// Refresh the feed
 			let feedRow = this.getRowIndexByID("L" + ids[0]);
 			if (feedRow !== false) {
 				this.tree.invalidateRow(feedRow);
-			}
-			// Refresh the Feeds row
-			let feedsRow = this.getRowIndexByID("F1");
-			if (feedsRow !== false) {
-				this.tree.invalidateRow(feedsRow);
 			}
 			return;
 		}
@@ -707,22 +700,20 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 					this._removeRow(row);
 				}
 				
-				// If a feed was removed and there are no more, remove the 'Feeds' row
+				// If a feed was removed and there are no more, remove the 'Feeds' header
 				// (and the splitter before it)
 				if (feedDeleted && !Zotero.Feeds.haveFeeds()) {
-					let row = this._rowMap['F1'];
+					let row = this._rowMap['HF'];
 					this._removeRow(row);
 					this._removeRow(row - 1);
 				}
 			}
-			
-			this._selectAfterRowRemoval(selectedIndex);
 		}
 		else if (action == 'modify') {
 			let row;
 			let id = ids[0];
 			let rowID = "C" + id;
-			let selectedIndex = this.selection.focused;
+			let selectedIndex = this.selection.count ? this.selection.currentIndex : 0;
 			
 			switch (type) {
 			case 'collection':
@@ -739,10 +730,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 					// Collection was moved to trash, so don't add it back
 					if (collection.deleted) {
 						this._refreshRowMap();
-						// If collection was selected, select next row
-						if (selectedIndex == row) {
-							this._selectAfterRowRemoval(selectedIndex);
-						}
+						this.selectAfterRowRemoval(selectedIndex);
 					}
 					else {
 						await this._addSortedRow('collection', id);
@@ -759,7 +747,6 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 				// undeleted), add it (if possible without opening any containers)
 				else if (!collection.deleted) {
 					await this._addSortedRow('collection', id);
-					await this.selectByID(currentTreeRow.id);
 					// Invalidate parent in case it's become non-empty
 					let parentRow = this.getRowIndexByID("C" + collection.parentID);
 					if (parentRow !== false) {
@@ -775,32 +762,15 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 					// TODO: Only move if name changed
 					this._removeRow(row);
 					
-					// Search was moved to trash
+					// Search moved to trash
 					if (search.deleted) {
 						this._refreshRowMap();
-						// If search was selected, select next row
-						if (selectedIndex == row) {
-							this._selectAfterRowRemoval(selectedIndex);
-						}
+						this.selectAfterRowRemoval(selectedIndex);
 					}
 					// If search isn't in trash, add it back
 					else {
 						await this._addSortedRow('search', id);
 						await this.selectByID(currentTreeRow.id);
-					}
-				}
-				// If search isn't currently visible and it isn't in the trash (because it was
-				// undeleted), add it
-				else if (!search.deleted) {
-					await this._addSortedRow('search', id);
-					await this.selectByID(currentTreeRow.id);
-					// Invalidate parent in case it's become non-empty
-					// NOTE: Not currently used, because searches can't yet have parents
-					if (search.parentID) {
-						let parentRow = this.getRowIndexByID("S" + search.parentID);
-						if (parentRow !== false) {
-							this.tree.invalidateRow(parentRow);
-						}
 					}
 				}
 				break;
@@ -1026,7 +996,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		this.selection.selectEventsSuppressed = true;
 		var count = 0;
 		var treeRow = this.getRow(index);
-		if (treeRow.isLibrary(true) || treeRow.isCollection() || treeRow.isFeeds()) {
+		if (treeRow.isLibrary(true) || treeRow.isCollection()) {
 			count = await this._expandRow(this._rows, index, true);
 		}
 		if (this.selection.focused > index) {
@@ -1035,9 +1005,9 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		this.selection.selectEventsSuppressed = false;
 		
 		this._rows[index].isOpen = true;
+		this.tree.invalidate(index);
 		this._refreshRowMap();
 		this._saveOpenStates();
-		this.tree.invalidate(index);
 	}
 
 	/**
@@ -1927,7 +1897,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 					}
 					*/
 					
-					window.openDialog('chrome://zotero/content/merge.xhtml', '', 'chrome,modal,centerscreen', io);
+					window.openDialog('chrome://zotero/content/merge.xul', '', 'chrome,modal,centerscreen', io);
 					
 					await Zotero.DB.executeTransaction(async function () {
 						// DEBUG: This probably needs to be updated if this starts being used
@@ -2030,8 +2000,8 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 				addedItems.push(item);
 			}
 			
-			// Automatically retrieve metadata for PDFs and ebooks
-			Zotero.RecognizeDocument.autoRecognizeItems(addedItems);
+			// Automatically retrieve metadata for PDFs
+			Zotero.RecognizePDF.autoRecognizeItems(addedItems);
 		}
 	}
 
@@ -2071,10 +2041,6 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		}
 		if (treeRow.isCollection()) {
 			return !treeRow.ref.hasChildCollections();
-		}
-		else if (treeRow.isFeeds()) {
-			// Hidden when empty
-			return false;
 		}
 		return true;
 	}
@@ -2130,14 +2096,13 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 					collectionType += 'Full';
 				}
 				break;
-				
-			case 'feeds':
-				collectionType = 'FeedLibrary';
-				break;
 			
 			case 'header':
 				if (treeRow.ref.id == 'group-libraries-header') {
 					collectionType = 'Groups';
+				}
+				else if (treeRow.ref.id == 'feed-libraries-header') {
+					collectionType = 'FeedLibrary';
 				}
 				else if (treeRow.ref.id == 'commons-header') {
 					collectionType = 'Commons';
@@ -2157,12 +2122,12 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		iconClsName = iconClsName || "IconTreesource" + collectionType;
 
 		if (collectionType == 'Separator') {
-			return document.createElement('span');
+			return document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
 		}
 		
 		var icon = getDOMIcon(iconClsName);
 		if (!icon) {
-			return document.createElement('span');
+			return document.createElementNS("http://www.w3.org/1999/xhtml", 'span');
 		}
 		return icon;
 	}
@@ -2224,7 +2189,6 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		var level = rows[row].level;
 		var isLibrary = treeRow.isLibrary(true);
 		var isCollection = treeRow.isCollection();
-		var isFeeds = treeRow.isFeeds();
 		var libraryID = treeRow.ref.libraryID;
 		
 		if (treeRow.isPublications() || treeRow.isFeed()) {
@@ -2283,7 +2247,7 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 			
 			let beforeRow = row + 1 + newRows;
 			rows.splice(beforeRow, 0,
-				new Zotero.CollectionTreeRow(this, isFeeds ? 'feed' : 'collection', collections[i], level + 1));
+				new Zotero.CollectionTreeRow(this, 'collection', collections[i], level + 1));
 			newRows++;
 			// Recursively expand child collections that should be open
 			newRows += await this._expandRow(rows, beforeRow);
@@ -2295,9 +2259,6 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 		
 		// Add searches
 		for (var i = 0, len = savedSearches.length; i < len; i++) {
-			// Skip searches in trash
-			if (savedSearches[i].deleted) continue;
-			
 			rows.splice(row + 1 + newRows, 0,
 				new Zotero.CollectionTreeRow(this, 'search', savedSearches[i], level + 1));
 			newRows++;
@@ -2492,36 +2453,15 @@ var CollectionTree = class CollectionTree extends LibraryTree {
 				beforeRow
 			);
 		}
-		
-		return beforeRow;
-	}
-	
-	_refreshRowMap() {
-		super._refreshRowMap();
-		let customRowHeights = [];
-		for (var i = 0; i < this.rowCount; i++) {
-			let row = this.getRow(i);
-			if (row.isSeparator()) {
-				customRowHeights.push([i, this._separatorHeight]);
+
+		let moveSelect = beforeRow + 1;
+		if (moveSelect <= this.selection.focused) {
+			while (!this.isSelectable(moveSelect)) {
+				moveSelect++;
 			}
+			this.selection.select(moveSelect);
 		}
-		this._customRowHeights = customRowHeights;
-		this.tree.updateCustomRowHeights(this._customRowHeights);
-	}
-	
-	_selectAfterRowRemoval(row) {
-		// If last row was selected, stay on the last row
-		if (row >= this._rows.length) {
-			row = this._rows.length - 1;
-		};
-		
-		// Make sure the selection doesn't land on a separator (e.g. deleting last feed)
-		while (row >= 0 && !this.isSelectable(row)) {
-			// move up, since we got shifted down
-			row--;
-		}
-		
-		this.selection.select(row);
+		return beforeRow;
 	}
 }
 

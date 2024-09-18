@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Poista nimike...">
 <!ENTITY zotero.toolbar.newLibrary.label "Uusi kirjasto">
 <!ENTITY zotero.toolbar.newCollection.label "Uusi kokoelma...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Merkitse syöte luetuksi">
 <!ENTITY zotero.toolbar.newGroup "Uusi ryhmä...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Uusi alakokoelma...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Uusi tallennettu haku...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Uusi syöte">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "URL-osoitteesta...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "OPML-tiedostosta...">
+<!ENTITY zotero.toolbar.feeds.refresh "Päivitä syöte">
 <!ENTITY zotero.toolbar.feeds.edit "Muokkaa syötettä...">
 
 <!ENTITY zotero.item.add "Lisää">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "Muunna teksti">
 <!ENTITY zotero.item.textTransform.titlecase "Otsikon aakkoslaji">
 <!ENTITY zotero.item.textTransform.sentencecase "Lauseen aakkoslaji">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Vaihda Etu/Suku">
-<!ENTITY zotero.item.creatorTransform.fixCase "Korjaa aakkoslaji">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Vaihda etu- ja sukunimien järjestys">
 <!ENTITY zotero.item.viewOnline "Katso verkossa">
 <!ENTITY zotero.item.copyAsURL "Kopioi URL-osoitteena">
 <!ENTITY zotero.item.deletePermanently "Poista lopullisesti...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Aseta väri">
 <!ENTITY zotero.tagSelector.renameTag "Nimeä avainsana uudelleen...">
 <!ENTITY zotero.tagSelector.deleteTag "Poista avainsana...">
-<!ENTITY zotero.tagSelector.splitTag "Jaa...">
 
 <!ENTITY zotero.tagColorChooser.title "Valitse avainsanan väri ja sijainti">
 <!ENTITY zotero.tagColorChooser.color "Väri:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Tuonti">
 <!ENTITY zotero.import.whereToImportFrom "Mistä haluat tuoda?">
 <!ENTITY zotero.import.source.file "Tiedosto (BibTeX, RIS, Zotero RDF, jne.)">
-<!ENTITY zotero.import.source.folder "Hakemisto, jossa on PDF:iä tai muita tiedostoja">
-<!ENTITY zotero.import.onlineImport "tuo verkosta">
 <!ENTITY zotero.import.importing "Tuodaan...">
 <!ENTITY zotero.import.database "Tietokanta">
 <!ENTITY zotero.import.lastModified "Viimeksi muokattu">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Sijoita tuodut kokoelmat ja nimikkeet uuteen kokoelmaan.">
 <!ENTITY zotero.import.fileHandling "Tiedostojen käsittely">
 <!ENTITY zotero.import.online.newItemsOnly "Lataa vain uudet kohteet; älä päivitä aikaisemmin tuotuja kohteita">
+<!ENTITY zotero.import.online.relinkOnly "Linkitä uudelleen Mendeley Desktopin viittaukset">
 
 <!ENTITY zotero.exportOptions.title "Vie...">
 <!ENTITY zotero.exportOptions.format.label "Muoto:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "Ilman aukeamia">
 <!ENTITY zotero.pdfReader.oddSpreads "Pariton sivu vasemmalla">
 <!ENTITY zotero.pdfReader.evenSpreads "Parillinen sivu vasemmalla">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Lähennä">
 <!ENTITY zotero.pdfReader.zoomOut "Loitonna">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Säädä kokoa automaattisesti">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Koko sivun leveys">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Koko sivun korkeus">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Tuo huomautukset...">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Kierrä sivua vasemmalle">
 <!ENTITY zotero.pdfReader.rotatePageRight "Kierrä sivua oikealle">
+<!ENTITY zotero.pdfReader.rotatePage180 "Kierrä sivua 180°">

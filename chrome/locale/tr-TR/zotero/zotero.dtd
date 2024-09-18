@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Eseri Kaldır...">
 <!ENTITY zotero.toolbar.newLibrary.label "Yeni Kitaplık">
 <!ENTITY zotero.toolbar.newCollection.label "Yeni Derme...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Beslemeyi Okunmuş İşaretle">
 <!ENTITY zotero.toolbar.newGroup "Yeni Grup...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Yeni Alt Derme...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Yeni Kaydedilen Arama...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Yeni Besleme">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "URL'den...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "OPML'den...">
+<!ENTITY zotero.toolbar.feeds.refresh "Beslemeyi Yenile">
 <!ENTITY zotero.toolbar.feeds.edit "Beslemeyi Düzenle...">
 
 <!ENTITY zotero.item.add "Ekle">
@@ -113,7 +115,6 @@
 <!ENTITY zotero.item.textTransform.titlecase "Başlık Biçimi">
 <!ENTITY zotero.item.textTransform.sentencecase "Cümle Biçimi">
 <!ENTITY zotero.item.creatorTransform.nameSwap "İlk ve Soyadları Takas Et">
-<!ENTITY zotero.item.creatorTransform.fixCase "Büyük Harfleri Düzelt">
 <!ENTITY zotero.item.viewOnline "Çevrimiçi Göster">
 <!ENTITY zotero.item.copyAsURL "URL'i Kopyala">
 <!ENTITY zotero.item.deletePermanently "Kalıcı Olarak Sil...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Etikete Renk Ata...">
 <!ENTITY zotero.tagSelector.renameTag "Etiketi Yeniden Adlandır...">
 <!ENTITY zotero.tagSelector.deleteTag "Etiketi Sil...">
-<!ENTITY zotero.tagSelector.splitTag "Ayır...">
 
 <!ENTITY zotero.tagColorChooser.title "Etiket Rengi ve Konumunu Seç">
 <!ENTITY zotero.tagColorChooser.color "Renk:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "İçeri Aktar">
 <!ENTITY zotero.import.whereToImportFrom "Nereden içeri aktarmak istiyorsunuz?">
 <!ENTITY zotero.import.source.file "Bir dosya (BibTeX, RIS, Zotero RDF, vb.)">
-<!ENTITY zotero.import.source.folder "PDF'lerin veya diğer dosyaların bulunduğu bir klasör">
-<!ENTITY zotero.import.onlineImport "çevrim içi içe aktarma">
 <!ENTITY zotero.import.importing "İçeri aktarılıyor...">
 <!ENTITY zotero.import.database "Veritabanı">
 <!ENTITY zotero.import.lastModified "Son Değiştirilmesi">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "İçeri aktarılmış dermeler ve eserleri yeni bir dermeye yerleştir">
 <!ENTITY zotero.import.fileHandling "Dosyaların İdare Edilmesi">
 <!ENTITY zotero.import.online.newItemsOnly "Yalnızca yeni eserleri indir; daha önce içeri aktarılmış olan eserleri güncelleme">
+<!ENTITY zotero.import.online.relinkOnly "Mendeley Desktop alıntılarını yeniden bağlantıla">
 
 <!ENTITY zotero.exportOptions.title "Dışarı Aktar...">
 <!ENTITY zotero.exportOptions.format.label "Biçim">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "Birleştirme">
 <!ENTITY zotero.pdfReader.oddSpreads "Tek Numaralı">
 <!ENTITY zotero.pdfReader.evenSpreads "Çift Numaralı">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Yakınlaştır">
 <!ENTITY zotero.pdfReader.zoomOut "Uzaklaştır">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Otomatik Olarak Yeniden Boyutlandır">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Sayfa Genişliğine Yakınlaştır">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Sayfa Yüksekliğine Yakınlaştır">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Ek Açıklamaları İçeri Aktar...">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Sayfayı Sola Döndür">
 <!ENTITY zotero.pdfReader.rotatePageRight "Sayfayı Sağa Döndür">
+<!ENTITY zotero.pdfReader.rotatePage180 "Sayfayı 180° Döndür">

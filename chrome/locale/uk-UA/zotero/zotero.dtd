@@ -84,6 +84,7 @@
 <!ENTITY zotero.toolbar.removeItem.label "Видалити документ...">
 <!ENTITY zotero.toolbar.newLibrary.label "Нова бібліотека">
 <!ENTITY zotero.toolbar.newCollection.label "Нова колекція...">
+<!ENTITY zotero.toolbar.markFeedRead.label "Позначити стрічку як прочитану">
 <!ENTITY zotero.toolbar.newGroup "Нова група...">
 <!ENTITY zotero.toolbar.newSubcollection.label "Нова підколекція...">
 <!ENTITY zotero.toolbar.newSavedSearch.label "Новий збережений пошук...">
@@ -105,6 +106,7 @@
 <!ENTITY zotero.toolbar.feeds.new "Нова стрічка">
 <!ENTITY zotero.toolbar.feeds.new.fromURL "Новий URL...">
 <!ENTITY zotero.toolbar.feeds.new.fromOPML "З OPML...">
+<!ENTITY zotero.toolbar.feeds.refresh "Оновити стрічку">
 <!ENTITY zotero.toolbar.feeds.edit "Редагувати стрічку...">
 
 <!ENTITY zotero.item.add "Додати">
@@ -112,8 +114,7 @@
 <!ENTITY zotero.item.textTransform "Трансформувати текст">
 <!ENTITY zotero.item.textTransform.titlecase "Кожне Слово з Заголовної Букви">
 <!ENTITY zotero.item.textTransform.sentencecase "Як у реченні">
-<!ENTITY zotero.item.creatorTransform.nameSwap "Swap First/Last">
-<!ENTITY zotero.item.creatorTransform.fixCase "Fix Case">
+<!ENTITY zotero.item.creatorTransform.nameSwap "Поміняти місцями ім'я та прізвище">
 <!ENTITY zotero.item.viewOnline "Дивитись онлайн">
 <!ENTITY zotero.item.copyAsURL "Копіювати у вигляді URL">
 <!ENTITY zotero.item.deletePermanently "Видалити остаточно...">
@@ -140,7 +141,6 @@
 <!ENTITY zotero.tagSelector.assignColor "Призначити колір...">
 <!ENTITY zotero.tagSelector.renameTag "Перейменувати тег...">
 <!ENTITY zotero.tagSelector.deleteTag "Видалити тег...">
-<!ENTITY zotero.tagSelector.splitTag "Split…">
 
 <!ENTITY zotero.tagColorChooser.title "Вибрати колір та розташування тега">
 <!ENTITY zotero.tagColorChooser.color "Колір:">
@@ -181,8 +181,6 @@
 <!ENTITY zotero.import "Імпорт">
 <!ENTITY zotero.import.whereToImportFrom "Where do you want to import from?">
 <!ENTITY zotero.import.source.file "A file (BibTeX, RIS, Zotero RDF, etc.)">
-<!ENTITY zotero.import.source.folder "A folder of PDFs or other files">
-<!ENTITY zotero.import.onlineImport "online import">
 <!ENTITY zotero.import.importing "Імпортування...">
 <!ENTITY zotero.import.database "Database">
 <!ENTITY zotero.import.lastModified "Last Modified">
@@ -190,6 +188,7 @@
 <!ENTITY zotero.import.createCollection "Place imported collections and items into new collection">
 <!ENTITY zotero.import.fileHandling "File Handling">
 <!ENTITY zotero.import.online.newItemsOnly "Download new items only; don’t update previously imported items">
+<!ENTITY zotero.import.online.relinkOnly "Relink Mendeley Desktop citations">
 
 <!ENTITY zotero.exportOptions.title "Експорт...">
 <!ENTITY zotero.exportOptions.format.label "Формат:">
@@ -322,11 +321,8 @@
 <!ENTITY zotero.pdfReader.noSpreads "No Spreads">
 <!ENTITY zotero.pdfReader.oddSpreads "Odd Spreads">
 <!ENTITY zotero.pdfReader.evenSpreads "Even Spreads">
-<!ENTITY zotero.pdfReader.scrolled "Scrolled">
-<!ENTITY zotero.pdfReader.paginated "Paginated">
 <!ENTITY zotero.pdfReader.zoomIn "Zoom In">
 <!ENTITY zotero.pdfReader.zoomOut "Zoom Out">
-<!ENTITY zotero.pdfReader.zoomReset "Reset Zoom">
 <!ENTITY zotero.pdfReader.zoomAuto "Automatically Resize">
 <!ENTITY zotero.pdfReader.zoomPageWidth "Zoom to Page Width">
 <!ENTITY zotero.pdfReader.zoomPageHeight "Zoom to Page Height">
@@ -335,3 +331,4 @@
 <!ENTITY zotero.pdfReader.transferFromPDF "Import Annotations…">
 <!ENTITY zotero.pdfReader.rotatePageLeft "Rotate Page Left">
 <!ENTITY zotero.pdfReader.rotatePageRight "Rotate Page Right">
+<!ENTITY zotero.pdfReader.rotatePage180 "Rotate Page 180°">
